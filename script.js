@@ -5,7 +5,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const SUPABASE_URL = "https://mqqcbjgkqwnqxhdzidrj.supabase.co";
     const SUPABASE_KEY = "sb_publishable__HcUXQM2qz_G1WzPD0k3PQ_tZGhZE_2";
 
-    // ✅ 这里用 client，避免 supabase 冲突
     const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let editing = false;
@@ -18,6 +17,57 @@ document.addEventListener("DOMContentLoaded", () => {
     const exitEditBtn = document.getElementById("exitEditBtn");
     const resetBtn = document.getElementById("resetBtn");
 
+    // ===== 登录弹窗 =====
+    function openLoginModal() {
+        return new Promise((resolve) => {
+            const modal = document.getElementById("loginModal");
+            modal.innerHTML = `
+                <div class="login-box">
+                    <h2>进入编辑模式</h2>
+
+                    <form id="loginForm">
+                        <label>编辑密码</label>
+                        <input id="pagePasswordInput" type="password" autocomplete="off">
+
+                        <label>邮箱</label>
+                        <input id="emailInput" type="email" autocomplete="username">
+
+                        <label>密码</label>
+                        <input id="passwordInput" type="password" autocomplete="current-password">
+
+                        <div class="login-actions">
+                            <button type="button" id="cancelBtn">取消</button>
+                            <button type="submit">登录</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+
+            modal.classList.remove("hidden");
+
+            const form = document.getElementById("loginForm");
+            const cancelBtn = document.getElementById("cancelBtn");
+
+            function close(result) {
+                modal.classList.add("hidden");
+                modal.innerHTML = "";
+                resolve(result);
+            }
+
+            form.onsubmit = (e) => {
+                e.preventDefault();
+                close({
+                    pagePassword: document.getElementById("pagePasswordInput").value,
+                    email: document.getElementById("emailInput").value,
+                    password: document.getElementById("passwordInput").value
+                });
+            };
+
+            cancelBtn.onclick = () => close(null);
+        });
+    }
+
+    // ===== 登录逻辑 =====
     async function ensureLogin() {
         const { data } = await client.auth.getUser();
 
@@ -25,18 +75,17 @@ document.addEventListener("DOMContentLoaded", () => {
             return true;
         }
 
-        const pwd = prompt("输入编辑密码");
-        if (pwd !== EDIT_PASSWORD) {
-            alert("密码错误");
+        const result = await openLoginModal();
+        if (!result) return false;
+
+        if (result.pagePassword !== EDIT_PASSWORD) {
+            alert("编辑密码错误");
             return false;
         }
 
-        const email = prompt("Supabase 邮箱");
-        const password = prompt("Supabase 密码");
-
-        const { error } = await client.auth.signInWithPassword({
-            email,
-            password
+        const { data: loginData, error } = await client.auth.signInWithPassword({
+            email: result.email,
+            password: result.password
         });
 
         if (error) {
@@ -44,9 +93,15 @@ document.addEventListener("DOMContentLoaded", () => {
             return false;
         }
 
+        if (loginData.user.email !== ADMIN_EMAIL) {
+            alert("不是管理员账号");
+            return false;
+        }
+
         return true;
     }
 
+    // ===== 读取作品 =====
     async function loadWorks() {
         const { data, error } = await client
             .from("works")
@@ -62,6 +117,7 @@ document.addEventListener("DOMContentLoaded", () => {
         render();
     }
 
+    // ===== 渲染 =====
     function render() {
         contentDiv.innerHTML = "";
 
@@ -71,9 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const div = document.createElement("div");
             div.className = "work";
 
-            const images = work.images || [];
-
-            images.forEach((img, index) => {
+            (work.images || []).forEach((img, index) => {
                 const image = document.createElement("img");
                 image.src = img;
                 image.style.width = "200px";
@@ -102,8 +156,7 @@ document.addEventListener("DOMContentLoaded", () => {
         input.accept = "image/*";
 
         input.onchange = () => {
-            const file = input.files[0];
-            uploadImage(file, workId);
+            uploadImage(input.files[0], workId);
         };
 
         input.click();
@@ -139,8 +192,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function deleteImage(workId, index) {
-        if (!confirm("删除这张图片？")) return;
-
         const work = works.find(w => w.id === workId);
         const images = work.images || [];
 
@@ -166,6 +217,7 @@ document.addEventListener("DOMContentLoaded", () => {
         loadWorks();
     }
 
+    // ===== 事件 =====
     editBtn.onclick = async () => {
         if (!editing) {
             const ok = await ensureLogin();
