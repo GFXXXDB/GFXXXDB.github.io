@@ -13,10 +13,10 @@
         <div class="logo">Flll Portfolio</div>
 
         <div class="nav-links">
-            <a href="#works" title="跳转到作品展示">作品</a>
-            <a href="#about" title="查看个人介绍">关于我</a>
-            <a href="#contact" title="查看联系方式">联系</a>
-            <button type="button" id="editBtn" class="edit-btn" title="输入密码后进入编辑模式">编辑</button>
+            <a href="#works">作品</a>
+            <a href="#about">关于我</a>
+            <a href="#contact">联系</a>
+            <button type="button" id="editBtn" class="edit-btn">编辑</button>
         </div>
     </nav>
 
@@ -39,6 +39,7 @@
         <div id="editorPanel" class="editor-panel hidden">
             <button type="button" id="addWorkBtn">+ 添加作品</button>
             <button type="button" id="exitEditBtn">退出编辑</button>
+            <button type="button" id="logoutBtn">退出登录</button>
             <button type="button" id="resetBtn" class="danger">重置云端内容</button>
         </div>
     </section>
@@ -60,10 +61,12 @@
         <span>邮箱 / ArtStation / Bilibili / GitHub 等联系方式可以放在这里。</span>
     </section>
 </main>
-<div id="loginModal" class="login-modal hidden"></div>
+
 <footer>
     © 2026 Flll Portfolio
 </footer>
+
+<div id="loginModal" class="login-modal hidden"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="script.js"></script>
