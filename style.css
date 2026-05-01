@@ -36,18 +36,49 @@ a {
 .logo {
     font-weight: 800;
     letter-spacing: 0.8px;
+    color: #ffffff;
 }
 
 .nav-links {
     display: flex;
     align-items: center;
-    gap: 26px;
-    color: #aebbd1;
+    gap: 28px;
+    color: #ffffff;
     font-size: 15px;
+    font-weight: 700;
+}
+
+.nav-links a {
+    position: relative;
+    opacity: 0.86;
+    transition: opacity 0.2s, transform 0.2s;
 }
 
 .nav-links a:hover {
-    color: #ffffff;
+    opacity: 1;
+    transform: translateY(-1px);
+}
+
+.nav-links a::after {
+    content: attr(title);
+    position: absolute;
+    left: 50%;
+    top: 28px;
+    transform: translateX(-50%);
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.95);
+    color: #cbd5e1;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.nav-links a:hover::after {
+    opacity: 1;
 }
 
 .edit-btn,
@@ -60,12 +91,19 @@ a {
     background: #38bdf8;
     color: #06111f;
     font-weight: 800;
+    transition: transform 0.2s, background 0.2s;
 }
 
 .edit-btn:hover,
 .editor-panel button:hover,
 .card-action:hover {
     background: #7dd3fc;
+    transform: translateY(-1px);
+}
+
+.edit-btn.editing {
+    background: #f59e0b;
+    color: #111827;
 }
 
 .hero-content {
@@ -88,7 +126,7 @@ a {
 }
 
 .hero-desc {
-    color: #b8c4d6;
+    color: #d7e2f3;
     font-size: 21px;
     line-height: 1.8;
 }
@@ -163,12 +201,12 @@ a {
     display: block;
 }
 
-/* 编辑模式时，图片框可交互 */
-.editing .work-image-box {
+/* 编辑模式 */
+body.editing .work-image-box {
     cursor: pointer;
 }
 
-.editing .work-image-box:hover {
+body.editing .work-image-box:hover {
     outline: 3px solid rgba(56, 189, 248, 0.75);
     outline-offset: -8px;
 }
@@ -189,7 +227,7 @@ a {
 .work-text-editor {
     width: calc(100% - 60px);
     margin: 24px 30px 30px;
-    min-height: 130px;
+    min-height: 150px;
     resize: vertical;
     border-radius: 16px;
     border: 1px solid rgba(148, 163, 184, 0.26);
@@ -209,13 +247,9 @@ a {
     position: absolute;
     top: 16px;
     right: 16px;
-    display: none;
+    display: flex;
     gap: 10px;
     z-index: 5;
-}
-
-.editing .work-actions {
-    display: flex;
 }
 
 .card-action.delete {
@@ -264,7 +298,7 @@ a {
 }
 
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 .about-section {
