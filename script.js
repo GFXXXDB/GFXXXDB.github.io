@@ -1,4 +1,5 @@
 const PASSWORD = "111";
+
 let editing = false;
 
 const contentDiv = document.getElementById("content");
@@ -18,29 +19,34 @@ function render() {
         const block = document.createElement("div");
         block.className = "block";
 
-        const del = document.createElement("button");
-        del.innerText = "删除";
-        del.className = "delete-btn";
-        del.onclick = () => {
-            data.splice(index,1);
-            save();
-            render();
-        };
+        // 删除按钮
+        if (editing) {
+            const del = document.createElement("button");
+            del.innerText = "删除";
+            del.className = "delete-btn";
+            del.onclick = () => {
+                data.splice(index, 1);
+                save();
+                render();
+            };
+            block.appendChild(del);
+        }
 
-        block.appendChild(del);
+        // 图片区域
+        const imgDiv = document.createElement("div");
+        imgDiv.className = "image-block";
 
-        if(item.type === "image"){
-            const imgDiv = document.createElement("div");
-            imgDiv.className = "image-block";
+        if (item.src) {
+            const img = document.createElement("img");
+            img.src = item.src;
+            imgDiv.appendChild(img);
+        } else {
+            imgDiv.innerText = editing
+                ? "点击或拖拽上传图片"
+                : "";
+        }
 
-            if(item.src){
-                const img = document.createElement("img");
-                img.src = item.src;
-                imgDiv.appendChild(img);
-            } else {
-                imgDiv.innerText = "点击或拖拽上传图片";
-            }
-
+        if (editing) {
             imgDiv.onclick = () => upload(index);
 
             imgDiv.ondragover = e => e.preventDefault();
@@ -48,77 +54,96 @@ function render() {
             imgDiv.ondrop = e => {
                 e.preventDefault();
                 const file = e.dataTransfer.files[0];
-                read(file,index);
+                read(file, index);
             };
-
-            block.appendChild(imgDiv);
         }
 
-        if(item.type === "text"){
+        block.appendChild(imgDiv);
+
+        // ⭐ 文字区域（关键逻辑）
+        if (editing) {
             const textarea = document.createElement("textarea");
+            textarea.placeholder = "输入作品说明（可选）";
             textarea.value = item.text || "";
+
             textarea.oninput = () => {
                 data[index].text = textarea.value;
                 save();
             };
+
             block.appendChild(textarea);
+        } else {
+            // 👇 非编辑模式：只有有内容才显示
+            if (item.text && item.text.trim() !== "") {
+                const textDiv = document.createElement("div");
+                textDiv.className = "text-content";
+                textDiv.innerText = item.text;
+                block.appendChild(textDiv);
+            }
         }
 
-        const add = document.createElement("div");
-        add.className = "add-block";
-        add.innerText = "+ 添加模块";
-        add.onclick = () => chooseType(index+1);
-
-        block.appendChild(add);
+        // 添加按钮
+        if (editing) {
+            const add = document.createElement("div");
+            add.className = "add-block";
+            add.innerText = "+ 添加作品";
+            add.onclick = () => addBlock(index + 1);
+            block.appendChild(add);
+        }
 
         contentDiv.appendChild(block);
     });
 }
 
-function upload(i){
+// 添加作品（固定结构：图片+文字）
+function addBlock(pos) {
+    data.splice(pos, 0, {
+        src: "",
+        text: ""
+    });
+    save();
+    render();
+}
+
+// 上传图片
+function upload(i) {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
+
     input.onchange = () => {
-        read(input.files[0],i);
+        read(input.files[0], i);
     };
+
     input.click();
 }
 
-function read(file,i){
+// 读取图片
+function read(file, i) {
+    if (!file.type.startsWith("image/")) return;
+
     const reader = new FileReader();
+
     reader.onload = () => {
         data[i].src = reader.result;
         save();
         render();
     };
+
     reader.readAsDataURL(file);
 }
 
-function chooseType(pos){
-    const type = prompt("输入类型: image 或 text");
+// 顶部添加按钮
+globalAdd.onclick = () => addBlock(data.length);
 
-    if(type === "image"){
-        data.splice(pos,0,{type:"image"});
-    }
-
-    if(type === "text"){
-        data.splice(pos,0,{type:"text"});
-    }
-
-    save();
-    render();
-}
-
-globalAdd.onclick = () => chooseType(data.length);
-
+// 编辑模式
 editBtn.onclick = () => {
     const p = prompt("输入密码");
-    if(p === PASSWORD){
+    if (p === PASSWORD) {
         editing = true;
-        alert("进入编辑模式");
+        render();
     } else {
-        alert("错误");
+        alert("密码错误");
     }
 };
 
