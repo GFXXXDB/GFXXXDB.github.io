@@ -1,42 +1,137 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Flll Tools</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flll Portfolio | Level Artist</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<header>
-    <h1>Flll Tools</h1>
-    <p>专注开发 UE 插件和实用工具</p>
+<header class="hero">
+    <nav class="nav">
+        <div class="logo">Flll Portfolio</div>
+        <div class="nav-links">
+            <a href="#works">作品</a>
+            <a href="#skills">技能</a>
+            <a href="#about">关于我</a>
+            <a href="#contact">联系</a>
+        </div>
+    </nav>
+
+    <div class="hero-content">
+        <p class="tag">Level Artist / Environment Artist</p>
+        <h1>游戏关卡美术作品集</h1>
+        <p class="intro">
+            专注游戏场景搭建、关卡氛围、灯光表现与环境叙事。
+        </p>
+        <a class="hero-button" href="#works">查看作品</a>
+    </div>
 </header>
 
-<section class="tools">
+<main>
 
-    <div class="card">
-        <h2>UE 相机控制插件</h2>
-        <p>使用键盘控制相机移动的小插件</p>
-        <a href="#">下载（暂无）</a>
-    </div>
+    <section id="works" class="section">
+        <div class="section-title">
+            <p>Featured Works</p>
+            <h2>精选作品</h2>
+        </div>
 
-    <div class="card">
-        <h2>Raw 图片查看器</h2>
-        <p>支持查看 .raw 格式图片的工具</p>
-        <a href="#">下载（暂无）</a>
-    </div>
+        <div class="work-grid">
+            <article class="work-card">
+                <div class="work-image image-1">
+                    <span>作品图片 01</span>
+                </div>
+                <div class="work-info">
+                    <h3>遗迹场景关卡</h3>
+                    <p>UE5 / Environment Art / Lighting</p>
+                    <span>古代遗迹风格场景，重点表现空间层次、光影氛围和探索路线。</span>
+                </div>
+            </article>
 
-    <div class="card">
-        <h2>更多工具</h2>
-        <p>正在开发中...</p>
-        <a href="#">敬请期待</a>
-    </div>
+            <article class="work-card">
+                <div class="work-image image-2">
+                    <span>作品图片 02</span>
+                </div>
+                <div class="work-info">
+                    <h3>科幻室内场景</h3>
+                    <p>UE5 / Level Art / Modular Assets</p>
+                    <span>使用模块化资产搭建室内空间，强调材质对比和冷色科技氛围。</span>
+                </div>
+            </article>
 
-</section>
+            <article class="work-card">
+                <div class="work-image image-3">
+                    <span>作品图片 03</span>
+                </div>
+                <div class="work-info">
+                    <h3>自然森林关卡</h3>
+                    <p>UE5 / Landscape / Composition</p>
+                    <span>自然环境关卡练习，关注地形节奏、植被分布和玩家视线引导。</span>
+                </div>
+            </article>
+
+            <article class="work-card">
+                <div class="work-image image-4">
+                    <span>作品图片 04</span>
+                </div>
+                <div class="work-info">
+                    <h3>城市街区场景</h3>
+                    <p>Environment Art / Storytelling</p>
+                    <span>通过建筑、道具和灯光塑造城市氛围，强化场景故事感。</span>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section id="skills" class="section skills-section">
+        <div class="section-title">
+            <p>Skills</p>
+            <h2>技能方向</h2>
+        </div>
+
+        <div class="skills-grid">
+            <div class="skill-card">
+                <h3>关卡美术</h3>
+                <p>场景搭建、空间组织、玩家路线引导、视觉焦点控制。</p>
+            </div>
+
+            <div class="skill-card">
+                <h3>环境氛围</h3>
+                <p>灯光、色彩、构图、气氛塑造和环境叙事。</p>
+            </div>
+
+            <div class="skill-card">
+                <h3>常用软件</h3>
+                <p>Unreal Engine、Blender / Maya、Substance Painter、Photoshop。</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="about" class="section about-section">
+        <div class="about-box">
+            <div>
+                <p class="small-title">About Me</p>
+                <h2>关于我</h2>
+            </div>
+            <p>
+                我是一名游戏关卡美术，关注场景空间、环境叙事、灯光氛围和玩家视觉体验。
+                希望通过作品展示自己在游戏场景制作、关卡搭建和美术表现方面的能力。
+            </p>
+        </div>
+    </section>
+
+    <section id="contact" class="section contact-section">
+        <h2>Contact</h2>
+        <p>邮箱 / ArtStation / Bilibili / GitHub 等联系方式可以放在这里。</p>
+    </section>
+
+</main>
 
 <footer>
-    <p>© 2026 Flll Tools</p>
+    <p>© 2026 Flll Portfolio</p>
 </footer>
 
+<script src="script.js"></script>
 </body>
 </html>
