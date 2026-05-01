@@ -1,64 +1,35 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flll Portfolio | Level Artist</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flll Portfolio</title>
+<link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
 <header class="hero">
-    <nav class="nav">
+    <div class="topbar">
         <div class="logo">Flll Portfolio</div>
-        <div class="nav-links">
-            <a href="#works">作品</a>
-            <a href="#about">关于我</a>
-            <a href="#contact">联系</a>
-            <button id="editBtn" class="edit-btn">编辑</button>
-        </div>
-    </nav>
-
-    <div class="hero-content">
-        <p class="tag">Level Artist / Environment Artist</p>
-        <h1>游戏关卡美术作品集</h1>
-        <p class="intro">专注游戏场景搭建、关卡氛围、灯光表现与环境叙事。</p>
+        <button id="editBtn">编辑</button>
     </div>
+
+    <h1>游戏关卡美术作品集</h1>
+    <p>场景、氛围、灯光与叙事</p>
 </header>
 
 <main>
-    <section id="works" class="section">
-        <div class="section-title">
-            <p>Featured Works</p>
-            <h2>精选作品</h2>
-        </div>
 
-        <div id="portfolioContent" class="portfolio-content"></div>
+<section class="editor">
 
-        <div id="editorTools" class="editor-tools hidden">
-            <button id="addImageBtn">+ 添加图片</button>
-            <button id="addTextBtn">+ 添加文字</button>
-            <button id="resetBtn" class="danger">重置内容</button>
-            <button id="exitEditBtn">退出编辑</button>
-        </div>
-    </section>
+    <div id="content"></div>
 
-    <section id="about" class="section about-section">
-        <h2>关于我</h2>
-        <p>
-            我是一名游戏关卡美术，关注场景空间、环境叙事、灯光氛围和玩家视觉体验。
-        </p>
-    </section>
+    <div id="globalAdd" class="add-block">+ 添加模块</div>
 
-    <section id="contact" class="section contact-section">
-        <h2>Contact</h2>
-        <p>邮箱 / ArtStation / Bilibili / GitHub 等联系方式可以放在这里。</p>
-    </section>
+</section>
+
 </main>
-
-<footer>
-    <p>© 2026 Flll Portfolio</p>
-</footer>
 
 <script src="script.js"></script>
 </body>
