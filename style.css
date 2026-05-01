@@ -6,42 +6,56 @@ body {
 }
 
 .hero {
-    padding:60px 10%;
+    padding:80px 10%;
     background:linear-gradient(135deg,#0f172a,#020617);
 }
 
-.topbar {
+.nav {
     display:flex;
     justify-content:space-between;
-    align-items:center;
+}
+
+.logo {
+    font-weight:bold;
 }
 
 button {
-    padding:8px 16px;
-    border:none;
     background:#38bdf8;
+    border:none;
+    padding:8px 16px;
     border-radius:20px;
     cursor:pointer;
 }
 
-.editor {
-    padding:40px 10%;
+.hero h1 {
+    font-size:64px;
+    margin:20px 0;
+}
+
+.section {
+    padding:60px 10%;
+}
+
+.content {
+    display:flex;
+    flex-direction:column;
+    gap:40px;
 }
 
 .block {
-    margin-bottom:40px;
     position:relative;
 }
 
 .image-block {
-    height:400px;
+    width:100%;
+    height:420px;
+    border-radius:20px;
     background:#111;
-    border-radius:16px;
     display:flex;
     align-items:center;
     justify-content:center;
-    cursor:pointer;
     overflow:hidden;
+    cursor:pointer;
 }
 
 .image-block img {
@@ -50,9 +64,15 @@ button {
     object-fit:cover;
 }
 
-.text-block textarea {
+.text-content {
+    margin-top:16px;
+    color:#ccc;
+    line-height:1.8;
+}
+
+textarea {
     width:100%;
-    min-height:120px;
+    margin-top:12px;
     background:#020617;
     color:#fff;
     border:1px solid #444;
@@ -60,7 +80,7 @@ button {
 }
 
 .add-block {
-    margin-top:10px;
+    margin-top:12px;
     padding:12px;
     text-align:center;
     border:1px dashed #666;
@@ -69,12 +89,10 @@ button {
 
 .delete-btn {
     position:absolute;
-    top:10px;
     right:10px;
+    top:10px;
     background:red;
-    color:#fff;
     border:none;
-    padding:6px 10px;
-    border-radius:10px;
-    cursor:pointer;
+    padding:6px;
+    border-radius:8px;
 }
