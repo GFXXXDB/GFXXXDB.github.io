@@ -4,7 +4,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const SUPABASE_URL = "https://mqqcbjgkqwnqxhdzidrj.supabase.co";
     const SUPABASE_KEY = "sb_publishable__HcUXQM2qz_G1WzPD0k3PQ_tZGhZE_2";
 
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const rememberStorageKey = "fl_portfolio_remember_login";
+    const rememberLogin = localStorage.getItem(rememberStorageKey) === "yes";
+
+    const storage = rememberLogin ? localStorage : sessionStorage;
+
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+            storage
+        }
+    });
 
     let editing = false;
     let works = [];
@@ -14,13 +26,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const editorPanel = document.getElementById("editorPanel");
     const addWorkBtn = document.getElementById("addWorkBtn");
     const exitEditBtn = document.getElementById("exitEditBtn");
+    const changePasswordBtn = document.getElementById("changePasswordBtn");
     const logoutBtn = document.getElementById("logoutBtn");
     const resetBtn = document.getElementById("resetBtn");
-    const loginModal = document.getElementById("loginModal");
+    const modalRoot = document.getElementById("modalRoot");
 
     init();
 
     async function init() {
+        await handleRecoveryLink();
         await loadWorks();
     }
 
@@ -29,10 +43,56 @@ document.addEventListener("DOMContentLoaded", () => {
         return data?.user || null;
     }
 
-    async function openLoginModal() {
+    async function handleRecoveryLink() {
+        const hash = window.location.hash || "";
+        const query = window.location.search || "";
+
+        const hasRecovery =
+            hash.includes("type=recovery") ||
+            query.includes("type=recovery") ||
+            hash.includes("access_token");
+
+        const hasError =
+            hash.includes("error=") ||
+            query.includes("error=");
+
+        if (hasError) {
+            alert("登录链接已失效，请重新发送密码重置邮件。");
+            history.replaceState(null, "", window.location.pathname);
+            return;
+        }
+
+        if (!hasRecovery) {
+            return;
+        }
+
+        setTimeout(async () => {
+            const user = await getCurrentUser();
+
+            if (!user || user.email !== ADMIN_EMAIL) {
+                alert("密码重置链接无效或账号不正确。");
+                return;
+            }
+
+            await openChangePasswordModal(true);
+            history.replaceState(null, "", window.location.pathname);
+        }, 500);
+    }
+
+    function openModal(html) {
+        modalRoot.innerHTML = html;
+        modalRoot.classList.remove("hidden");
+    }
+
+    function closeModal() {
+        modalRoot.classList.add("hidden");
+        modalRoot.innerHTML = "";
+    }
+
+    function openLoginModal() {
         return new Promise((resolve) => {
-            loginModal.innerHTML = `
-                <div class="login-box">
+            openModal(`
+                <div class="modal-box">
                     <h2>进入编辑模式</h2>
 
                     <form id="loginForm">
@@ -43,19 +103,17 @@ document.addEventListener("DOMContentLoaded", () => {
                         <input id="passwordInput" name="password" type="password" autocomplete="current-password" required>
 
                         <label class="remember-row">
-                            <input id="rememberInput" type="checkbox">
+                            <input id="rememberInput" type="checkbox" ${rememberLogin ? "checked" : ""}>
                             <span>保持自动登录这台电脑</span>
                         </label>
 
-                        <div class="login-actions">
+                        <div class="modal-actions">
                             <button type="button" id="cancelLoginBtn">取消</button>
                             <button type="submit" class="primary">登录并编辑</button>
                         </div>
                     </form>
                 </div>
-            `;
-
-            loginModal.classList.remove("hidden");
+            `);
 
             const form = document.getElementById("loginForm");
             const cancelBtn = document.getElementById("cancelLoginBtn");
@@ -63,23 +121,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
             setTimeout(() => emailInput.focus(), 50);
 
-            function close(result) {
-                loginModal.classList.add("hidden");
-                loginModal.innerHTML = "";
-                resolve(result);
-            }
-
             form.addEventListener("submit", (event) => {
                 event.preventDefault();
 
-                close({
+                const result = {
                     email: document.getElementById("emailInput").value.trim(),
                     password: document.getElementById("passwordInput").value,
                     remember: document.getElementById("rememberInput").checked
-                });
+                };
+
+                closeModal();
+                resolve(result);
             });
 
-            cancelBtn.addEventListener("click", () => close(null));
+            cancelBtn.addEventListener("click", () => {
+                closeModal();
+                resolve(null);
+            });
         });
     }
 
@@ -94,6 +152,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (!result) {
             return false;
+        }
+
+        if (result.remember) {
+            localStorage.setItem(rememberStorageKey, "yes");
+        } else {
+            localStorage.removeItem(rememberStorageKey);
         }
 
         const { data, error } = await client.auth.signInWithPassword({
@@ -112,14 +176,63 @@ document.addEventListener("DOMContentLoaded", () => {
             return false;
         }
 
-        if (result.remember) {
-            localStorage.setItem("fl_portfolio_auto_login", "yes");
-            alert("已保持登录。这台电脑下次点击编辑会直接进入。");
-        } else {
-            localStorage.removeItem("fl_portfolio_auto_login");
-        }
-
         return true;
+    }
+
+    async function openChangePasswordModal(fromRecovery = false) {
+        return new Promise((resolve) => {
+            openModal(`
+                <div class="modal-box">
+                    <h2>${fromRecovery ? "设置新密码" : "修改密码"}</h2>
+
+                    <form id="passwordForm">
+                        <label for="newPasswordInput">新密码</label>
+                        <input id="newPasswordInput" type="password" autocomplete="new-password" required minlength="6">
+
+                        <label for="confirmPasswordInput">确认新密码</label>
+                        <input id="confirmPasswordInput" type="password" autocomplete="new-password" required minlength="6">
+
+                        <div class="modal-actions">
+                            <button type="button" id="cancelPasswordBtn">取消</button>
+                            <button type="submit" class="primary">保存密码</button>
+                        </div>
+                    </form>
+                </div>
+            `);
+
+            const form = document.getElementById("passwordForm");
+            const cancelBtn = document.getElementById("cancelPasswordBtn");
+
+            form.addEventListener("submit", async (event) => {
+                event.preventDefault();
+
+                const p1 = document.getElementById("newPasswordInput").value;
+                const p2 = document.getElementById("confirmPasswordInput").value;
+
+                if (p1 !== p2) {
+                    alert("两次输入的密码不一致。");
+                    return;
+                }
+
+                const { error } = await client.auth.updateUser({
+                    password: p1
+                });
+
+                if (error) {
+                    alert("修改密码失败：" + error.message);
+                    return;
+                }
+
+                closeModal();
+                alert("密码已更新。");
+                resolve(true);
+            });
+
+            cancelBtn.addEventListener("click", () => {
+                closeModal();
+                resolve(false);
+            });
+        });
     }
 
     async function loadWorks() {
@@ -141,7 +254,6 @@ document.addEventListener("DOMContentLoaded", () => {
     function render() {
         contentDiv.innerHTML = "";
 
-        document.body.classList.toggle("editing", editing);
         editorPanel.classList.toggle("hidden", !editing);
         editBtn.textContent = editing ? "编辑中" : "编辑";
         editBtn.classList.toggle("editing", editing);
@@ -302,18 +414,57 @@ document.addEventListener("DOMContentLoaded", () => {
         input.click();
     }
 
+    async function compressImage(file) {
+        const maxWidth = 2560;
+        const quality = 0.88;
+
+        if (!file.type.startsWith("image/")) {
+            return file;
+        }
+
+        if (file.type === "image/gif") {
+            return file;
+        }
+
+        const bitmap = await createImageBitmap(file);
+        const scale = Math.min(1, maxWidth / bitmap.width);
+        const width = Math.round(bitmap.width * scale);
+        const height = Math.round(bitmap.height * scale);
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(bitmap, 0, 0, width, height);
+
+        return new Promise((resolve) => {
+            canvas.toBlob((blob) => {
+                if (!blob) {
+                    resolve(file);
+                    return;
+                }
+
+                resolve(new File([blob], file.name.replace(/\.\w+$/, ".jpg"), {
+                    type: "image/jpeg"
+                }));
+            }, "image/jpeg", quality);
+        });
+    }
+
     async function uploadImageToWork(file, workId, imageIndex) {
         if (!file.type.startsWith("image/")) {
             alert("请选择图片文件。");
             return;
         }
 
-        const safeName = file.name.replace(/[^\w.\-]/g, "_");
+        const uploadFile = await compressImage(file);
+        const safeName = uploadFile.name.replace(/[^\w.\-]/g, "_");
         const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}-${safeName}`;
 
         const { error: uploadError } = await client.storage
             .from("images")
-            .upload(fileName, file);
+            .upload(fileName, uploadFile);
 
         if (uploadError) {
             console.error("图片上传失败：", uploadError);
@@ -325,8 +476,6 @@ document.addEventListener("DOMContentLoaded", () => {
             .from("images")
             .getPublicUrl(fileName);
 
-        const imageUrl = publicData.publicUrl;
-
         const work = works.find(item => item.id === workId);
 
         if (!work) {
@@ -334,7 +483,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const images = Array.isArray(work.images) ? [...work.images] : [];
-        images[imageIndex] = imageUrl;
+        images[imageIndex] = publicData.publicUrl;
 
         const { error } = await client
             .from("works")
@@ -353,12 +502,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function addWork() {
         const { error } = await client
             .from("works")
-            .insert([
-                {
-                    images: [],
-                    text: ""
-                }
-            ]);
+            .insert([{ images: [], text: "" }]);
 
         if (error) {
             console.error("添加作品失败：", error);
@@ -479,7 +623,8 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        localStorage.removeItem("fl_portfolio_auto_login");
+        localStorage.removeItem(rememberStorageKey);
+        sessionStorage.clear();
         await client.auth.signOut();
         editing = false;
         render();
@@ -504,6 +649,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     exitEditBtn.addEventListener("click", exitEditMode);
+    changePasswordBtn.addEventListener("click", () => openChangePasswordModal(false));
     logoutBtn.addEventListener("click", logout);
     addWorkBtn.addEventListener("click", addWork);
     resetBtn.addEventListener("click", resetWorks);
