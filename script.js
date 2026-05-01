@@ -1,8 +1,13 @@
 document.addEventListener("DOMContentLoaded", () => {
     const PASSWORD = "111";
-    const STORAGE_KEY = "flll_portfolio_multi_image_v1";
+
+    const SUPABASE_URL = "https://mqqcbjgkqwnqxhdzidrj.supabase.co";
+    const SUPABASE_KEY = "sb_publishable__HcUXQM2qz_G1WzPD0k3PQ_tZGhZE_2";
+
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let editing = false;
+    let data = [];
 
     const contentDiv = document.getElementById("content");
     const editBtn = document.getElementById("editBtn");
@@ -11,70 +16,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const exitEditBtn = document.getElementById("exitEditBtn");
     const resetBtn = document.getElementById("resetBtn");
 
-    if (!contentDiv || !editBtn || !editorPanel || !addWorkBtn || !exitEditBtn || !resetBtn) {
-        console.error("页面元素缺失，请检查 index.html 是否完整替换。");
-        return;
-    }
+    async function loadWorks() {
+        const { data: works, error } = await client
+            .from("works")
+            .select("*")
+            .order("created_at", { ascending: true });
 
-    function defaultData() {
-        return [
-            {
-                images: [],
-                text: "这里可以写作品说明：项目背景、你的负责内容、使用软件、制作思路、灯光氛围设计等。"
-            }
-        ];
-    }
-
-    function normalizeData(rawData) {
-        if (!Array.isArray(rawData)) {
-            return defaultData();
+        if (error) {
+            console.error("读取作品失败：", error);
+            alert("读取作品失败，请检查 Supabase 表和 RLS 权限。");
+            return;
         }
 
-        return rawData.map((item) => {
-            if (item.images && Array.isArray(item.images)) {
-                return {
-                    images: item.images,
-                    text: item.text || ""
-                };
-            }
-
-            if (item.src) {
-                return {
-                    images: [item.src],
-                    text: item.text || ""
-                };
-            }
-
-            return {
-                images: [],
-                text: item.text || ""
-            };
-        });
-    }
-
-    function loadData() {
-        try {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (!saved) {
-                return defaultData();
-            }
-
-            return normalizeData(JSON.parse(saved));
-        } catch (error) {
-            console.error("读取本地数据失败：", error);
-            return defaultData();
-        }
-    }
-
-    let data = loadData();
-
-    function save() {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        } catch (error) {
-            alert("保存失败：图片可能太大。建议压缩图片后再上传。");
-            console.error(error);
-        }
+        data = works || [];
+        render();
     }
 
     function render() {
@@ -93,12 +48,12 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        data.forEach((item, workIndex) => {
-            contentDiv.appendChild(createWorkCard(item, workIndex));
+        data.forEach((work, workIndex) => {
+            contentDiv.appendChild(createWorkCard(work, workIndex));
         });
     }
 
-    function createWorkCard(item, workIndex) {
+    function createWorkCard(work, workIndex) {
         const card = document.createElement("article");
         card.className = "work-card";
 
@@ -110,13 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
             deleteWorkBtn.type = "button";
             deleteWorkBtn.className = "card-action delete";
             deleteWorkBtn.textContent = "删除作品";
-            deleteWorkBtn.addEventListener("click", () => {
-                if (!confirm("确定删除整个作品吗？")) return;
-
-                data.splice(workIndex, 1);
-                save();
-                render();
-            });
+            deleteWorkBtn.addEventListener("click", () => deleteWork(work.id));
 
             workActions.appendChild(deleteWorkBtn);
             card.appendChild(workActions);
@@ -125,11 +74,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const imagesWrap = document.createElement("div");
         imagesWrap.className = "work-images";
 
-        if (item.images.length === 0) {
-            imagesWrap.appendChild(createImageBox("", workIndex, 0, true));
+        const images = Array.isArray(work.images) ? work.images : [];
+
+        if (images.length === 0) {
+            imagesWrap.appendChild(createImageBox("", work.id, 0, true));
         } else {
-            item.images.forEach((src, imageIndex) => {
-                imagesWrap.appendChild(createImageBox(src, workIndex, imageIndex, false));
+            images.forEach((src, imageIndex) => {
+                imagesWrap.appendChild(createImageBox(src, work.id, imageIndex, false));
             });
         }
 
@@ -143,37 +94,32 @@ document.addEventListener("DOMContentLoaded", () => {
             addImageBtn.type = "button";
             addImageBtn.className = "add-image-btn";
             addImageBtn.textContent = "+ 添加图片到这个作品";
-            addImageBtn.addEventListener("click", () => {
-                chooseImage(workIndex, item.images.length);
-            });
+            addImageBtn.addEventListener("click", () => chooseImage(work.id, images.length));
 
             addImageRow.appendChild(addImageBtn);
             card.appendChild(addImageRow);
-        }
 
-        if (editing) {
             const textarea = document.createElement("textarea");
             textarea.className = "work-text-editor";
             textarea.placeholder = "输入作品描述（可选）。不填写时，浏览模式不会显示文字。";
-            textarea.value = item.text || "";
+            textarea.value = work.text || "";
 
-            textarea.addEventListener("input", () => {
-                data[workIndex].text = textarea.value;
-                save();
-            });
+            textarea.addEventListener("input", debounce(() => {
+                updateWorkText(work.id, textarea.value);
+            }, 500));
 
             card.appendChild(textarea);
-        } else if (item.text && item.text.trim() !== "") {
+        } else if (work.text && work.text.trim() !== "") {
             const text = document.createElement("div");
             text.className = "work-text";
-            text.textContent = item.text;
+            text.textContent = work.text;
             card.appendChild(text);
         }
 
         return card;
     }
 
-    function createImageBox(src, workIndex, imageIndex, isPlaceholder) {
+    function createImageBox(src, workId, imageIndex, isPlaceholder) {
         const unit = document.createElement("div");
         unit.className = "image-unit";
 
@@ -187,12 +133,7 @@ document.addEventListener("DOMContentLoaded", () => {
             deleteImageBtn.textContent = "删除图片";
             deleteImageBtn.addEventListener("click", (event) => {
                 event.stopPropagation();
-
-                if (!confirm("确定删除这张图片吗？")) return;
-
-                data[workIndex].images.splice(imageIndex, 1);
-                save();
-                render();
+                deleteImage(workId, imageIndex);
             });
 
             imageActions.appendChild(deleteImageBtn);
@@ -212,9 +153,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (editing) {
-            imageBox.addEventListener("click", () => {
-                chooseImage(workIndex, imageIndex);
-            });
+            imageBox.addEventListener("click", () => chooseImage(workId, imageIndex));
 
             imageBox.addEventListener("dragover", (event) => {
                 event.preventDefault();
@@ -230,9 +169,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 imageBox.classList.remove("dragover");
 
                 const file = event.dataTransfer.files[0];
-
                 if (file) {
-                    readImage(file, workIndex, imageIndex);
+                    uploadImageToWork(file, workId, imageIndex);
                 }
             });
         }
@@ -241,50 +179,151 @@ document.addEventListener("DOMContentLoaded", () => {
         return unit;
     }
 
-    function chooseImage(workIndex, imageIndex) {
+    function chooseImage(workId, imageIndex) {
         const input = document.createElement("input");
         input.type = "file";
         input.accept = "image/*";
 
         input.addEventListener("change", () => {
             const file = input.files && input.files[0];
-
             if (file) {
-                readImage(file, workIndex, imageIndex);
+                uploadImageToWork(file, workId, imageIndex);
             }
         });
 
         input.click();
     }
 
-    function readImage(file, workIndex, imageIndex) {
+    async function uploadImageToWork(file, workId, imageIndex) {
         if (!file.type.startsWith("image/")) {
             alert("请选择图片文件。");
             return;
         }
 
-        const reader = new FileReader();
+        const ext = file.name.split(".").pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-        reader.addEventListener("load", () => {
-            if (!data[workIndex]) {
-                return;
-            }
+        const { error: uploadError } = await client.storage
+            .from("images")
+            .upload(fileName, file);
 
-            if (!Array.isArray(data[workIndex].images)) {
-                data[workIndex].images = [];
-            }
+        if (uploadError) {
+            console.error("图片上传失败：", uploadError);
+            alert("图片上传失败，请确认 Storage 里已经创建 public 的 images bucket。");
+            return;
+        }
 
-            data[workIndex].images[imageIndex] = reader.result;
+        const { data: publicData } = client.storage
+            .from("images")
+            .getPublicUrl(fileName);
 
-            save();
-            render();
-        });
+        const imageUrl = publicData.publicUrl;
 
-        reader.addEventListener("error", () => {
-            alert("图片读取失败，请换一张图片试试。");
-        });
+        const work = data.find(item => item.id === workId);
+        if (!work) return;
 
-        reader.readAsDataURL(file);
+        const images = Array.isArray(work.images) ? [...work.images] : [];
+        images[imageIndex] = imageUrl;
+
+        const { error } = await client
+            .from("works")
+            .update({ images })
+            .eq("id", workId);
+
+        if (error) {
+            console.error("保存图片失败：", error);
+            alert("图片已上传，但保存到作品失败。");
+            return;
+        }
+
+        await loadWorks();
+    }
+
+    async function addWork() {
+        const { error } = await client
+            .from("works")
+            .insert([
+                {
+                    images: [],
+                    text: ""
+                }
+            ]);
+
+        if (error) {
+            console.error("添加作品失败：", error);
+            alert("添加作品失败，请检查 INSERT Policy。");
+            return;
+        }
+
+        await loadWorks();
+    }
+
+    async function updateWorkText(workId, text) {
+        const { error } = await client
+            .from("works")
+            .update({ text })
+            .eq("id", workId);
+
+        if (error) {
+            console.error("保存文字失败：", error);
+        }
+    }
+
+    async function deleteImage(workId, imageIndex) {
+        if (!confirm("确定删除这张图片吗？")) return;
+
+        const work = data.find(item => item.id === workId);
+        if (!work) return;
+
+        const images = Array.isArray(work.images) ? [...work.images] : [];
+        images.splice(imageIndex, 1);
+
+        const { error } = await client
+            .from("works")
+            .update({ images })
+            .eq("id", workId);
+
+        if (error) {
+            console.error("删除图片失败：", error);
+            alert("删除图片失败。");
+            return;
+        }
+
+        await loadWorks();
+    }
+
+    async function deleteWork(workId) {
+        if (!confirm("确定删除整个作品吗？")) return;
+
+        const { error } = await client
+            .from("works")
+            .delete()
+            .eq("id", workId);
+
+        if (error) {
+            console.error("删除作品失败：", error);
+            alert("删除作品失败，请检查 DELETE Policy。");
+            return;
+        }
+
+        await loadWorks();
+    }
+
+    async function resetWorks() {
+        if (!confirm("确定清空所有作品吗？这个操作会影响所有访问者看到的内容。")) return;
+
+        const { error } = await client
+            .from("works")
+            .delete()
+            .neq("id", "00000000-0000-0000-0000-000000000000");
+
+        if (error) {
+            console.error("重置失败：", error);
+            alert("重置失败。");
+            return;
+        }
+
+        await loadWorks();
     }
 
     function enterEditMode() {
@@ -303,35 +342,12 @@ document.addEventListener("DOMContentLoaded", () => {
         render();
     }
 
-    function addWork() {
-        data.push({
-            images: [],
-            text: ""
-        });
-
-        save();
-        render();
-
-        setTimeout(() => {
-            const cards = document.querySelectorAll(".work-card");
-            const lastCard = cards[cards.length - 1];
-
-            if (lastCard) {
-                lastCard.scrollIntoView({
-                    behavior: "smooth",
-                    block: "center"
-                });
-            }
-        }, 50);
-    }
-
-    function resetLocalData() {
-        if (!confirm("这会清空当前浏览器保存的作品内容，确定继续吗？")) return;
-
-        localStorage.removeItem(STORAGE_KEY);
-        data = defaultData();
-        save();
-        render();
+    function debounce(fn, delay) {
+        let timer = null;
+        return function () {
+            clearTimeout(timer);
+            timer = setTimeout(fn, delay);
+        };
     }
 
     editBtn.addEventListener("click", () => {
@@ -344,7 +360,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     exitEditBtn.addEventListener("click", exitEditMode);
     addWorkBtn.addEventListener("click", addWork);
-    resetBtn.addEventListener("click", resetLocalData);
+    resetBtn.addEventListener("click", resetWorks);
 
-    render();
+    loadWorks();
 });
