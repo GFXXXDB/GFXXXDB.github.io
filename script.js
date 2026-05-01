@@ -1,149 +1,227 @@
 const PASSWORD = "111";
+const STORAGE_KEY = "flll_portfolio_artstation_like_v2";
 
 let editing = false;
 
 const contentDiv = document.getElementById("content");
 const editBtn = document.getElementById("editBtn");
+const editorPanel = document.getElementById("editorPanel");
+const addWorkBtn = document.getElementById("addWorkBtn");
+const exitEditBtn = document.getElementById("exitEditBtn");
+const resetBtn = document.getElementById("resetBtn");
 
-let data = JSON.parse(localStorage.getItem("portfolio")) || [];
-
-function save(){
-    localStorage.setItem("portfolio", JSON.stringify(data));
+function defaultData() {
+    return [
+        {
+            src: "",
+            text: "这里可以写作品说明：项目背景、你的负责内容、使用软件、制作思路、灯光氛围设计等。"
+        }
+    ];
 }
 
-function render(){
+function loadData() {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved) : defaultData();
+    } catch {
+        return defaultData();
+    }
+}
+
+let data = loadData();
+
+function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function render() {
     contentDiv.innerHTML = "";
 
     document.body.classList.toggle("editing", editing);
+    editorPanel.classList.toggle("hidden", !editing);
+    editBtn.textContent = editing ? "编辑中" : "编辑";
+
+    if (data.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty-state";
+        empty.textContent = editing ? "还没有作品，点击下方「添加作品」开始。" : "暂无作品。";
+        contentDiv.appendChild(empty);
+        return;
+    }
 
     data.forEach((item, index) => {
-
-        const block = document.createElement("div");
-        block.className = "block";
-
-        // 删除按钮（仅编辑模式）
-        if(editing){
-            const del = document.createElement("button");
-            del.innerText = "删除";
-            del.className = "delete-btn";
-            del.onclick = () => {
-                data.splice(index,1);
-                save();
-                render();
-            };
-            block.appendChild(del);
-        }
-
-        // 图片
-        const imgDiv = document.createElement("div");
-        imgDiv.className = "image-block";
-
-        if(item.src){
-            const img = document.createElement("img");
-            img.src = item.src;
-            imgDiv.appendChild(img);
-        }else{
-            imgDiv.innerText = editing ? "点击或拖拽上传图片" : "";
-        }
-
-        // 只有编辑模式才允许操作
-        if(editing){
-            imgDiv.onclick = () => upload(index);
-
-            imgDiv.ondragover = e => e.preventDefault();
-
-            imgDiv.ondrop = e => {
-                e.preventDefault();
-                const file = e.dataTransfer.files[0];
-                read(file,index);
-            };
-        }
-
-        block.appendChild(imgDiv);
-
-        // 文字
-        if(editing){
-            const textarea = document.createElement("textarea");
-            textarea.value = item.text || "";
-            textarea.placeholder = "输入作品说明（可选）";
-
-            textarea.oninput = () => {
-                data[index].text = textarea.value;
-                save();
-            };
-
-            block.appendChild(textarea);
-        }else{
-            if(item.text && item.text.trim() !== ""){
-                const text = document.createElement("div");
-                text.className = "text-content";
-                text.innerText = item.text;
-                block.appendChild(text);
-            }
-        }
-
-        // 添加按钮（只在编辑模式）
-        if(editing){
-            const add = document.createElement("div");
-            add.className = "add-block";
-            add.innerText = "+ 添加作品";
-            add.onclick = () => addBlock(index+1);
-            block.appendChild(add);
-        }
-
-        contentDiv.appendChild(block);
+        contentDiv.appendChild(createWorkCard(item, index));
     });
 }
 
-function addBlock(pos){
-    data.splice(pos,0,{src:"",text:""});
+function createWorkCard(item, index) {
+    const card = document.createElement("article");
+    card.className = "work-card";
+
+    if (editing) {
+        const actions = document.createElement("div");
+        actions.className = "work-actions";
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "card-action delete";
+        deleteBtn.textContent = "删除";
+        deleteBtn.onclick = () => {
+            if (!confirm("确定删除这个作品吗？")) return;
+            data.splice(index, 1);
+            save();
+            render();
+        };
+
+        actions.appendChild(deleteBtn);
+        card.appendChild(actions);
+    }
+
+    const imageBox = document.createElement("div");
+    imageBox.className = "work-image-box";
+
+    if (item.src) {
+        const img = document.createElement("img");
+        img.src = item.src;
+        img.alt = "作品图片";
+        imageBox.appendChild(img);
+    } else {
+        imageBox.textContent = editing ? "点击或拖拽上传作品图片" : "";
+    }
+
+    if (editing) {
+        imageBox.addEventListener("click", () => chooseImage(index));
+
+        imageBox.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            imageBox.classList.add("dragover");
+        });
+
+        imageBox.addEventListener("dragleave", () => {
+            imageBox.classList.remove("dragover");
+        });
+
+        imageBox.addEventListener("drop", (e) => {
+            e.preventDefault();
+            imageBox.classList.remove("dragover");
+
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                readImage(file, index);
+            }
+        });
+    }
+
+    card.appendChild(imageBox);
+
+    if (editing) {
+        const textarea = document.createElement("textarea");
+        textarea.className = "work-text-editor";
+        textarea.placeholder = "输入作品描述（可选）。不填写时，浏览模式不会显示文字。";
+        textarea.value = item.text || "";
+
+        textarea.addEventListener("input", () => {
+            data[index].text = textarea.value;
+            save();
+        });
+
+        card.appendChild(textarea);
+    } else {
+        if (item.text && item.text.trim() !== "") {
+            const text = document.createElement("div");
+            text.className = "work-text";
+            text.textContent = item.text;
+            card.appendChild(text);
+        }
+    }
+
+    return card;
+}
+
+function chooseImage(index) {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+
+    input.onchange = () => {
+        const file = input.files[0];
+        if (file) {
+            readImage(file, index);
+        }
+    };
+
+    input.click();
+}
+
+function readImage(file, index) {
+    if (!file.type.startsWith("image/")) {
+        alert("请选择图片文件。");
+        return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+        data[index].src = reader.result;
+        save();
+        render();
+    };
+
+    reader.readAsDataURL(file);
+}
+
+function enterEditMode() {
+    const password = prompt("请输入编辑密码");
+
+    if (password === PASSWORD) {
+        editing = true;
+        render();
+    } else if (password !== null) {
+        alert("密码错误。");
+    }
+}
+
+function exitEditMode() {
+    editing = false;
+    render();
+}
+
+function addWork() {
+    data.push({
+        src: "",
+        text: ""
+    });
+
+    save();
+    render();
+
+    setTimeout(() => {
+        const cards = document.querySelectorAll(".work-card");
+        const lastCard = cards[cards.length - 1];
+        if (lastCard) {
+            lastCard.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+    }, 50);
+}
+
+function resetLocalData() {
+    if (!confirm("这会清空当前浏览器保存的作品内容，确定继续吗？")) return;
+
+    localStorage.removeItem(STORAGE_KEY);
+    data = defaultData();
     save();
     render();
 }
 
-function upload(i){
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.onchange = () => read(input.files[0],i);
-    input.click();
-}
-
-function read(file,i){
-    if(!file.type.startsWith("image/")) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-        data[i].src = reader.result;
-        save();
-        render();
-    };
-    reader.readAsDataURL(file);
-}
-
-// 🔥 编辑按钮逻辑（关键）
-editBtn.onclick = () => {
-
-    if(editing){
-        // 退出
-        editing = false;
-        render();
-        return;
+editBtn.addEventListener("click", () => {
+    if (editing) {
+        exitEditMode();
+    } else {
+        enterEditMode();
     }
+});
 
-    const p = prompt("输入密码");
-
-    if(p === PASSWORD){
-        editing = true;
-        render();
-    }else{
-        alert("密码错误");
-    }
-};
-
-// 初始数据（避免空白）
-if(data.length === 0){
-    data.push({src:"",text:""});
-}
+exitEditBtn.addEventListener("click", exitEditMode);
+addWorkBtn.addEventListener("click", addWork);
+resetBtn.addEventListener("click", resetLocalData);
 
 render();
