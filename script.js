@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
     const PASSWORD = "111";
-    const STORAGE_KEY = "flll_portfolio_artstation_like_v3";
+    const STORAGE_KEY = "flll_portfolio_multi_image_v1";
 
     let editing = false;
 
@@ -19,16 +19,47 @@ document.addEventListener("DOMContentLoaded", () => {
     function defaultData() {
         return [
             {
-                src: "",
+                images: [],
                 text: "这里可以写作品说明：项目背景、你的负责内容、使用软件、制作思路、灯光氛围设计等。"
             }
         ];
     }
 
+    function normalizeData(rawData) {
+        if (!Array.isArray(rawData)) {
+            return defaultData();
+        }
+
+        return rawData.map((item) => {
+            if (item.images && Array.isArray(item.images)) {
+                return {
+                    images: item.images,
+                    text: item.text || ""
+                };
+            }
+
+            if (item.src) {
+                return {
+                    images: [item.src],
+                    text: item.text || ""
+                };
+            }
+
+            return {
+                images: [],
+                text: item.text || ""
+            };
+        });
+    }
+
     function loadData() {
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
-            return saved ? JSON.parse(saved) : defaultData();
+            if (!saved) {
+                return defaultData();
+            }
+
+            return normalizeData(JSON.parse(saved));
         } catch (error) {
             console.error("读取本地数据失败：", error);
             return defaultData();
@@ -62,42 +93,118 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        data.forEach((item, index) => {
-            contentDiv.appendChild(createWorkCard(item, index));
+        data.forEach((item, workIndex) => {
+            contentDiv.appendChild(createWorkCard(item, workIndex));
         });
     }
 
-    function createWorkCard(item, index) {
+    function createWorkCard(item, workIndex) {
         const card = document.createElement("article");
         card.className = "work-card";
 
         if (editing) {
-            const actions = document.createElement("div");
-            actions.className = "work-actions";
+            const workActions = document.createElement("div");
+            workActions.className = "work-actions";
 
-            const deleteBtn = document.createElement("button");
-            deleteBtn.type = "button";
-            deleteBtn.className = "card-action delete";
-            deleteBtn.textContent = "删除";
-            deleteBtn.addEventListener("click", () => {
-                const ok = confirm("确定删除这个作品吗？");
-                if (!ok) return;
+            const deleteWorkBtn = document.createElement("button");
+            deleteWorkBtn.type = "button";
+            deleteWorkBtn.className = "card-action delete";
+            deleteWorkBtn.textContent = "删除作品";
+            deleteWorkBtn.addEventListener("click", () => {
+                if (!confirm("确定删除整个作品吗？")) return;
 
-                data.splice(index, 1);
+                data.splice(workIndex, 1);
                 save();
                 render();
             });
 
-            actions.appendChild(deleteBtn);
-            card.appendChild(actions);
+            workActions.appendChild(deleteWorkBtn);
+            card.appendChild(workActions);
+        }
+
+        const imagesWrap = document.createElement("div");
+        imagesWrap.className = "work-images";
+
+        if (item.images.length === 0) {
+            imagesWrap.appendChild(createImageBox("", workIndex, 0, true));
+        } else {
+            item.images.forEach((src, imageIndex) => {
+                imagesWrap.appendChild(createImageBox(src, workIndex, imageIndex, false));
+            });
+        }
+
+        card.appendChild(imagesWrap);
+
+        if (editing) {
+            const addImageRow = document.createElement("div");
+            addImageRow.className = "add-image-row";
+
+            const addImageBtn = document.createElement("button");
+            addImageBtn.type = "button";
+            addImageBtn.className = "add-image-btn";
+            addImageBtn.textContent = "+ 添加图片到这个作品";
+            addImageBtn.addEventListener("click", () => {
+                chooseImage(workIndex, item.images.length);
+            });
+
+            addImageRow.appendChild(addImageBtn);
+            card.appendChild(addImageRow);
+        }
+
+        if (editing) {
+            const textarea = document.createElement("textarea");
+            textarea.className = "work-text-editor";
+            textarea.placeholder = "输入作品描述（可选）。不填写时，浏览模式不会显示文字。";
+            textarea.value = item.text || "";
+
+            textarea.addEventListener("input", () => {
+                data[workIndex].text = textarea.value;
+                save();
+            });
+
+            card.appendChild(textarea);
+        } else if (item.text && item.text.trim() !== "") {
+            const text = document.createElement("div");
+            text.className = "work-text";
+            text.textContent = item.text;
+            card.appendChild(text);
+        }
+
+        return card;
+    }
+
+    function createImageBox(src, workIndex, imageIndex, isPlaceholder) {
+        const unit = document.createElement("div");
+        unit.className = "image-unit";
+
+        if (editing && !isPlaceholder) {
+            const imageActions = document.createElement("div");
+            imageActions.className = "image-actions";
+
+            const deleteImageBtn = document.createElement("button");
+            deleteImageBtn.type = "button";
+            deleteImageBtn.className = "card-action delete";
+            deleteImageBtn.textContent = "删除图片";
+            deleteImageBtn.addEventListener("click", (event) => {
+                event.stopPropagation();
+
+                if (!confirm("确定删除这张图片吗？")) return;
+
+                data[workIndex].images.splice(imageIndex, 1);
+                save();
+                render();
+            });
+
+            imageActions.appendChild(deleteImageBtn);
+            unit.appendChild(imageActions);
         }
 
         const imageBox = document.createElement("div");
-        imageBox.className = "work-image-box";
+        imageBox.className = src ? "work-image-box has-image" : "work-image-box";
 
-        if (item.src) {
+        if (src) {
             const img = document.createElement("img");
-            img.src = item.src;
+            img.src = src;
             img.alt = "作品图片";
             imageBox.appendChild(img);
         } else {
@@ -105,7 +212,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (editing) {
-            imageBox.addEventListener("click", () => chooseImage(index));
+            imageBox.addEventListener("click", () => {
+                chooseImage(workIndex, imageIndex);
+            });
 
             imageBox.addEventListener("dragover", (event) => {
                 event.preventDefault();
@@ -121,54 +230,34 @@ document.addEventListener("DOMContentLoaded", () => {
                 imageBox.classList.remove("dragover");
 
                 const file = event.dataTransfer.files[0];
+
                 if (file) {
-                    readImage(file, index);
+                    readImage(file, workIndex, imageIndex);
                 }
             });
         }
 
-        card.appendChild(imageBox);
-
-        if (editing) {
-            const textarea = document.createElement("textarea");
-            textarea.className = "work-text-editor";
-            textarea.placeholder = "输入作品描述（可选）。不填写时，浏览模式不会显示文字。";
-            textarea.value = item.text || "";
-
-            textarea.addEventListener("input", () => {
-                data[index].text = textarea.value;
-                save();
-            });
-
-            card.appendChild(textarea);
-        } else {
-            if (item.text && item.text.trim() !== "") {
-                const text = document.createElement("div");
-                text.className = "work-text";
-                text.textContent = item.text;
-                card.appendChild(text);
-            }
-        }
-
-        return card;
+        unit.appendChild(imageBox);
+        return unit;
     }
 
-    function chooseImage(index) {
+    function chooseImage(workIndex, imageIndex) {
         const input = document.createElement("input");
         input.type = "file";
         input.accept = "image/*";
 
         input.addEventListener("change", () => {
             const file = input.files && input.files[0];
+
             if (file) {
-                readImage(file, index);
+                readImage(file, workIndex, imageIndex);
             }
         });
 
         input.click();
     }
 
-    function readImage(file, index) {
+    function readImage(file, workIndex, imageIndex) {
         if (!file.type.startsWith("image/")) {
             alert("请选择图片文件。");
             return;
@@ -177,7 +266,16 @@ document.addEventListener("DOMContentLoaded", () => {
         const reader = new FileReader();
 
         reader.addEventListener("load", () => {
-            data[index].src = reader.result;
+            if (!data[workIndex]) {
+                return;
+            }
+
+            if (!Array.isArray(data[workIndex].images)) {
+                data[workIndex].images = [];
+            }
+
+            data[workIndex].images[imageIndex] = reader.result;
+
             save();
             render();
         });
@@ -207,7 +305,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function addWork() {
         data.push({
-            src: "",
+            images: [],
             text: ""
         });
 
@@ -228,8 +326,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function resetLocalData() {
-        const ok = confirm("这会清空当前浏览器保存的作品内容，确定继续吗？");
-        if (!ok) return;
+        if (!confirm("这会清空当前浏览器保存的作品内容，确定继续吗？")) return;
 
         localStorage.removeItem(STORAGE_KEY);
         data = defaultData();
