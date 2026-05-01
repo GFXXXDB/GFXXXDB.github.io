@@ -1,3 +1,16 @@
+:root {
+    --radius: 14px;
+    --bg-main: #070b14;
+    --bg-section: #080d18;
+    --bg-card: #111827;
+    --bg-card-dark: #0d1422;
+    --cyan: #38bdf8;
+    --cyan-light: #7dd3fc;
+    --text-main: #e5edf8;
+    --text-soft: #b8c4d6;
+    --border-soft: rgba(148, 163, 184, 0.18);
+}
+
 * {
     box-sizing: border-box;
 }
@@ -9,8 +22,8 @@ html {
 body {
     margin: 0;
     font-family: Arial, "Microsoft YaHei", sans-serif;
-    background: #070b14;
-    color: #e5edf8;
+    background: var(--bg-main);
+    color: var(--text-main);
 }
 
 a {
@@ -81,23 +94,29 @@ a {
     opacity: 1;
 }
 
+button {
+    font-family: inherit;
+}
+
 .edit-btn,
 .editor-panel button,
-.card-action {
+.card-action,
+.add-image-btn {
     border: none;
     cursor: pointer;
     border-radius: 999px;
     padding: 10px 18px;
-    background: #38bdf8;
+    background: var(--cyan);
     color: #06111f;
     font-weight: 800;
-    transition: transform 0.2s, background 0.2s;
+    transition: transform 0.2s, background 0.2s, opacity 0.2s;
 }
 
 .edit-btn:hover,
 .editor-panel button:hover,
-.card-action:hover {
-    background: #7dd3fc;
+.card-action:hover,
+.add-image-btn:hover {
+    background: var(--cyan-light);
     transform: translateY(-1px);
 }
 
@@ -113,7 +132,7 @@ a {
 
 .eyebrow {
     margin: 0;
-    color: #7dd3fc;
+    color: var(--cyan-light);
     letter-spacing: 3px;
     font-weight: 700;
 }
@@ -136,7 +155,7 @@ a {
 }
 
 .section-title {
-    max-width: 1180px;
+    max-width: 1080px;
     margin: 0 auto 36px;
 }
 
@@ -144,7 +163,7 @@ a {
 .about-card p,
 .contact-section p {
     margin: 0 0 10px;
-    color: #7dd3fc;
+    color: var(--cyan-light);
     letter-spacing: 3px;
     font-size: 14px;
     font-weight: 800;
@@ -158,50 +177,60 @@ a {
 }
 
 .works-section {
-    background: #080d18;
+    background: var(--bg-section);
 }
 
 .works-list {
-    max-width: 1180px;
+    max-width: 1080px;
     margin: 0 auto;
     display: grid;
-    gap: 42px;
+    gap: 46px;
 }
 
 .work-card {
     position: relative;
     overflow: hidden;
-    border-radius: 22px;
-    background: linear-gradient(180deg, #121a2a, #0d1422);
-    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, var(--bg-card), var(--bg-card-dark));
+    border: 1px solid var(--border-soft);
     box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
+}
+
+.work-images {
+    display: grid;
+    gap: 18px;
+    padding: 18px;
 }
 
 .work-image-box {
     width: 100%;
-    aspect-ratio: 16 / 9;
-    min-height: 320px;
-    max-height: 680px;
     overflow: hidden;
+    border-radius: var(--radius);
     background:
         linear-gradient(rgba(255, 255, 255, 0.03), rgba(0, 0, 0, 0.18)),
         linear-gradient(135deg, #334155, #0f172a);
+    border: 1px solid rgba(148, 163, 184, 0.12);
     display: flex;
     align-items: center;
     justify-content: center;
     color: #9fb0c7;
     font-size: 18px;
     font-weight: 800;
+    min-height: 260px;
+}
+
+.work-image-box.has-image {
+    min-height: 0;
+    background: #020617;
 }
 
 .work-image-box img {
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+    height: auto;
     display: block;
+    object-fit: contain;
 }
 
-/* 编辑模式 */
 body.editing .work-image-box {
     cursor: pointer;
 }
@@ -212,12 +241,29 @@ body.editing .work-image-box:hover {
 }
 
 .work-image-box.dragover {
-    outline: 3px solid #38bdf8;
+    outline: 3px solid var(--cyan);
     outline-offset: -8px;
 }
 
+.image-unit {
+    position: relative;
+}
+
+.image-actions {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: none;
+    gap: 8px;
+    z-index: 5;
+}
+
+body.editing .image-actions {
+    display: flex;
+}
+
 .work-text {
-    padding: 24px 30px 30px;
+    padding: 6px 30px 30px;
     color: #cbd5e1;
     font-size: 18px;
     line-height: 1.9;
@@ -225,14 +271,14 @@ body.editing .work-image-box:hover {
 }
 
 .work-text-editor {
-    width: calc(100% - 60px);
-    margin: 24px 30px 30px;
+    width: calc(100% - 36px);
+    margin: 0 18px 18px;
     min-height: 150px;
     resize: vertical;
-    border-radius: 16px;
+    border-radius: var(--radius);
     border: 1px solid rgba(148, 163, 184, 0.26);
     background: #070b14;
-    color: #e5edf8;
+    color: var(--text-main);
     padding: 18px 20px;
     font-size: 17px;
     line-height: 1.8;
@@ -246,10 +292,10 @@ body.editing .work-image-box:hover {
 .work-actions {
     position: absolute;
     top: 16px;
-    right: 16px;
+    left: 16px;
     display: flex;
     gap: 10px;
-    z-index: 5;
+    z-index: 8;
 }
 
 .card-action.delete {
@@ -261,11 +307,27 @@ body.editing .work-image-box:hover {
     background: #f87171;
 }
 
+.add-image-row {
+    padding: 0 18px 18px;
+}
+
+.add-image-btn {
+    width: 100%;
+    border-radius: var(--radius);
+    background: rgba(56, 189, 248, 0.12);
+    color: var(--cyan-light);
+    border: 1px dashed rgba(125, 211, 252, 0.45);
+}
+
+.add-image-btn:hover {
+    background: rgba(56, 189, 248, 0.2);
+}
+
 .empty-state {
-    max-width: 1180px;
+    max-width: 1080px;
     margin: 0 auto;
     padding: 80px 24px;
-    border-radius: 22px;
+    border-radius: var(--radius);
     border: 1px dashed rgba(148, 163, 184, 0.28);
     text-align: center;
     color: #94a3b8;
@@ -275,17 +337,18 @@ body.editing .work-image-box:hover {
 .editor-panel {
     position: sticky;
     bottom: 24px;
-    max-width: 1180px;
+    max-width: 1080px;
     margin: 42px auto 0;
     display: flex;
     flex-wrap: wrap;
     gap: 14px;
     padding: 18px;
-    border-radius: 20px;
+    border-radius: var(--radius);
     background: rgba(15, 23, 42, 0.92);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(148, 163, 184, 0.18);
+    border: 1px solid var(--border-soft);
     box-shadow: 0 18px 60px rgba(0, 0, 0, 0.3);
+    z-index: 20;
 }
 
 .editor-panel .danger {
@@ -297,28 +360,36 @@ body.editing .work-image-box:hover {
     background: #f87171;
 }
 
+.editor-tip {
+    max-width: 1080px;
+    margin: 16px auto 0;
+    color: #8ba4bd;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
 .hidden {
     display: none !important;
 }
 
 .about-section {
-    background: #070b14;
+    background: var(--bg-main);
 }
 
 .about-card {
-    max-width: 1180px;
+    max-width: 1080px;
     margin: 0 auto;
     padding: 42px;
-    border-radius: 24px;
-    background: #111827;
-    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: var(--radius);
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
 }
 
 .about-card span,
 .contact-section span {
     display: block;
     margin-top: 18px;
-    color: #b8c4d6;
+    color: var(--text-soft);
     font-size: 17px;
     line-height: 2;
 }
@@ -352,15 +423,15 @@ footer {
     }
 
     .work-image-box {
-        min-height: 220px;
+        min-height: 200px;
+    }
+
+    .work-text {
+        padding: 0 20px 24px;
     }
 
     .work-text-editor {
         width: calc(100% - 36px);
-        margin: 18px;
-    }
-
-    .work-text {
-        padding: 20px;
+        margin: 0 18px 18px;
     }
 }
