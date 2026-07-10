@@ -84,6 +84,22 @@
         footerHint.textContent = screen;
     }
 
+    function goBackFromTopbar() {
+        if (state.screen === GAME_STATE.GAME_MENU) {
+            window.location.href = "../../../index.html";
+            return;
+        }
+
+        if (state.screen === GAME_STATE.BATTLE || state.screen === GAME_STATE.RESULT) {
+            state.projectile = null;
+            renderRoom();
+            setScreen(GAME_STATE.ROOM);
+            return;
+        }
+
+        setScreen(GAME_STATE.GAME_MENU);
+    }
+
     function createRoom() {
         state.slots = [
             { id: 1, label: "Slot 1", team: "blue", name: "Player", type: "player", ready: false },
@@ -611,6 +627,7 @@
     $("createRoomButton").addEventListener("click", createRoom);
     $("settingsButton").addEventListener("click", () => setScreen(GAME_STATE.SETTINGS));
     $("settingsBackButton").addEventListener("click", () => setScreen(GAME_STATE.GAME_MENU));
+    $("topReturnButton").addEventListener("click", goBackFromTopbar);
     $("changeMapButton").addEventListener("click", () => {
         renderMaps();
         setScreen(GAME_STATE.MAP_SELECT);
@@ -625,6 +642,7 @@
     });
     $("playAgainButton").addEventListener("click", resetReadyForRematch);
     $("returnRoomButton").addEventListener("click", resetReadyForRematch);
+    $("resultMenuButton").addEventListener("click", () => setScreen(GAME_STATE.GAME_MENU));
     angleInput.addEventListener("input", syncBattleUi);
     powerInput.addEventListener("input", syncBattleUi);
     fireButton.addEventListener("click", playerFire);

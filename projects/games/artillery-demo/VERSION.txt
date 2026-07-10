@@ -1,6 +1,6 @@
 Artillery Demo
 
-Build: 003
+Build: 004
 
 Features:
 - projectile physics
@@ -15,6 +15,10 @@ Features:
 - room navigation
 - ready toggle
 - improved team slots
+- 16:9 game window
+- fixed HUD content action layout
+- topbar return state logic
+- game-style menu layout
 
 Date:
 2026-07-11
