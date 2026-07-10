@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artillery Demo | Fill Space</title>
+    <link rel="stylesheet" href="game.css">
+</head>
+<body>
+<main class="game-shell">
+    <header class="game-header">
+        <a class="back-link" href="../../../index.html">← Fill Space</a>
+        <div>
+            <p class="eyebrow">PROJECTS / GAMES</p>
+            <h1>Artillery Demo</h1>
+        </div>
+        <p class="game-desc">一个纯 Canvas 的 2D 抛物线炮击小游戏 Demo。</p>
+    </header>
+
+    <section class="game-panel">
+        <div class="status-row">
+            <div class="fighter-status">
+                <span>玩家</span>
+                <div class="hp-bar">
+                    <div id="playerHpBar" class="hp-fill"></div>
+                </div>
+                <strong id="playerHpText">100 HP</strong>
+            </div>
+
+            <div class="turn-status">
+                <span id="turnText">玩家回合</span>
+                <small id="windText">风向 0</small>
+            </div>
+
+            <div class="fighter-status right">
+                <span>敌人</span>
+                <div class="hp-bar">
+                    <div id="enemyHpBar" class="hp-fill enemy"></div>
+                </div>
+                <strong id="enemyHpText">100 HP</strong>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas" width="960" height="540" aria-label="Artillery Demo game canvas"></canvas>
+
+        <div class="control-panel">
+            <label>
+                <span>角度 <strong id="angleValue">45°</strong></span>
+                <input id="angleInput" type="range" min="10" max="80" value="45">
+            </label>
+
+            <label>
+                <span>力度 <strong id="powerValue">62</strong></span>
+                <input id="powerInput" type="range" min="25" max="95" value="62">
+            </label>
+
+            <button id="fireButton" type="button">发射</button>
+            <button id="resetButton" type="button" class="ghost">重开</button>
+        </div>
+    </section>
+</main>
+
+<script src="game.js"></script>
+</body>
+</html>
