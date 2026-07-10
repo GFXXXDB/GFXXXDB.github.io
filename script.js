@@ -5,16 +5,31 @@ document.addEventListener("DOMContentLoaded", () => {
     const SUPABASE_KEY = "sb_publishable__HcUXQM2qz_G1WzPD0k3PQ_tZGhZE_2";
 
     const rememberStorageKey = "fl_portfolio_remember_login";
-    const rememberLogin = localStorage.getItem(rememberStorageKey) === "yes";
+    const storageBucket = "images";
 
-    const storage = rememberLogin ? localStorage : sessionStorage;
+    const authStorage = {
+        getItem(key) {
+            return getAuthStorage().getItem(key);
+        },
+        setItem(key, value) {
+            const storage = getAuthStorage();
+            const otherStorage = storage === localStorage ? sessionStorage : localStorage;
+
+            storage.setItem(key, value);
+            otherStorage.removeItem(key);
+        },
+        removeItem(key) {
+            localStorage.removeItem(key);
+            sessionStorage.removeItem(key);
+        }
+    };
 
     const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
         auth: {
             persistSession: true,
             autoRefreshToken: true,
             detectSessionInUrl: true,
-            storage
+            storage: authStorage
         }
     });
 
@@ -36,6 +51,73 @@ document.addEventListener("DOMContentLoaded", () => {
     async function init() {
         await handleRecoveryLink();
         await loadWorks();
+    }
+
+    function getAuthStorage() {
+        return isRememberLoginEnabled() ? localStorage : sessionStorage;
+    }
+
+    function isRememberLoginEnabled() {
+        return localStorage.getItem(rememberStorageKey) === "yes";
+    }
+
+    function clearSupabaseAuthStorage(storage) {
+        const keys = [];
+
+        for (let index = 0; index < storage.length; index += 1) {
+            const key = storage.key(index);
+
+            if (key && key.startsWith("sb-") && key.includes("-auth-token")) {
+                keys.push(key);
+            }
+        }
+
+        keys.forEach(key => storage.removeItem(key));
+    }
+
+    function prepareAuthStorage(remember) {
+        if (remember) {
+            localStorage.setItem(rememberStorageKey, "yes");
+            clearSupabaseAuthStorage(sessionStorage);
+        } else {
+            localStorage.removeItem(rememberStorageKey);
+            clearSupabaseAuthStorage(localStorage);
+        }
+    }
+
+    function showContentMessage(message) {
+        contentDiv.innerHTML = "";
+
+        const state = document.createElement("div");
+        state.className = "empty-state";
+        state.textContent = message;
+        contentDiv.appendChild(state);
+    }
+
+    function showLoading() {
+        showContentMessage("作品加载中…");
+    }
+
+    function getStoragePathFromPublicUrl(url) {
+        if (!url) {
+            return null;
+        }
+
+        try {
+            const parsedUrl = new URL(url);
+            const marker = `/storage/v1/object/public/${storageBucket}/`;
+            const markerIndex = parsedUrl.pathname.indexOf(marker);
+
+            if (markerIndex === -1) {
+                return null;
+            }
+
+            const path = parsedUrl.pathname.slice(markerIndex + marker.length);
+            return decodeURIComponent(path);
+        } catch (error) {
+            console.error("解析图片路径失败：", error);
+            return null;
+        }
     }
 
     async function getCurrentUser() {
@@ -103,7 +185,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         <input id="passwordInput" name="password" type="password" autocomplete="current-password" required>
 
                         <label class="remember-row">
-                            <input id="rememberInput" type="checkbox" ${rememberLogin ? "checked" : ""}>
+                            <input id="rememberInput" type="checkbox" ${isRememberLoginEnabled() ? "checked" : ""}>
                             <span>保持自动登录这台电脑</span>
                         </label>
 
@@ -154,11 +236,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return false;
         }
 
-        if (result.remember) {
-            localStorage.setItem(rememberStorageKey, "yes");
-        } else {
-            localStorage.removeItem(rememberStorageKey);
-        }
+        prepareAuthStorage(result.remember);
 
         const { data, error } = await client.auth.signInWithPassword({
             email: result.email,
@@ -236,6 +314,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function loadWorks() {
+        showLoading();
+
         const { data, error } = await client
             .from("works")
             .select("*")
@@ -244,6 +324,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (error) {
             console.error("读取作品失败：", error);
             alert("读取作品失败：" + error.message);
+            showContentMessage("作品加载失败，请稍后刷新重试。");
             return;
         }
 
@@ -458,12 +539,21 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        const uploadFile = await compressImage(file);
+        let uploadFile;
+
+        try {
+            uploadFile = await compressImage(file);
+        } catch (error) {
+            console.error("图片处理失败：", error);
+            alert("图片处理失败，请换一张图片后重试。");
+            return;
+        }
+
         const safeName = uploadFile.name.replace(/[^\w.\-]/g, "_");
         const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}-${safeName}`;
 
         const { error: uploadError } = await client.storage
-            .from("images")
+            .from(storageBucket)
             .upload(fileName, uploadFile);
 
         if (uploadError) {
@@ -473,12 +563,17 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const { data: publicData } = client.storage
-            .from("images")
+            .from(storageBucket)
             .getPublicUrl(fileName);
 
         const work = works.find(item => item.id === workId);
 
         if (!work) {
+            await client.storage
+                .from(storageBucket)
+                .remove([fileName]);
+
+            alert("保存失败：没有找到对应作品，请刷新页面后重试。");
             return;
         }
 
@@ -493,6 +588,11 @@ document.addEventListener("DOMContentLoaded", () => {
         if (error) {
             console.error("保存图片失败：", error);
             alert("图片已上传，但保存到作品失败：" + error.message);
+
+            await client.storage
+                .from(storageBucket)
+                .remove([fileName]);
+
             return;
         }
 
@@ -533,6 +633,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (error) {
             console.error("保存文字失败：", error);
+            alert("保存文字失败：" + error.message);
         }
     }
 
@@ -544,10 +645,19 @@ document.addEventListener("DOMContentLoaded", () => {
         const work = works.find(item => item.id === workId);
 
         if (!work) {
+            alert("删除失败：没有找到对应作品，请刷新页面后重试。");
             return;
         }
 
         const images = Array.isArray(work.images) ? [...work.images] : [];
+        const imageUrl = images[imageIndex];
+        const storagePath = getStoragePathFromPublicUrl(imageUrl);
+
+        if (imageUrl && !storagePath) {
+            alert("删除失败：无法识别 Storage 图片路径，请刷新页面后重试。");
+            return;
+        }
+
         images.splice(imageIndex, 1);
 
         const { error } = await client
@@ -559,6 +669,32 @@ document.addEventListener("DOMContentLoaded", () => {
             console.error("删除图片失败：", error);
             alert("删除图片失败：" + error.message);
             return;
+        }
+
+        if (storagePath) {
+            const { error: storageError } = await client.storage
+                .from(storageBucket)
+                .remove([storagePath]);
+
+            if (storageError) {
+                console.error("删除存储图片失败：", storageError);
+
+                const restoredImages = Array.isArray(work.images) ? [...work.images] : [];
+                const { error: rollbackError } = await client
+                    .from("works")
+                    .update({ images: restoredImages })
+                    .eq("id", workId);
+
+                if (rollbackError) {
+                    console.error("回滚图片数据失败：", rollbackError);
+                    alert("图片记录已删除，但存储文件删除失败，且回滚失败：" + rollbackError.message);
+                } else {
+                    alert("Storage 图片删除失败，已恢复作品图片记录：" + storageError.message);
+                }
+
+                await loadWorks();
+                return;
+            }
         }
 
         await loadWorks();
@@ -623,9 +759,11 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        localStorage.removeItem(rememberStorageKey);
-        sessionStorage.clear();
         await client.auth.signOut();
+        localStorage.removeItem(rememberStorageKey);
+        clearSupabaseAuthStorage(localStorage);
+        clearSupabaseAuthStorage(sessionStorage);
+        sessionStorage.clear();
         editing = false;
         render();
         alert("已退出登录。");
