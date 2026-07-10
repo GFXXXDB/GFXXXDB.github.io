@@ -18,44 +18,83 @@
     const world = {
         width: canvas.width,
         height: canvas.height,
-        gravity: 220,
-        wind: 0
+        gravity: 240,
+        wind: 0,
+        terrain: []
     };
 
-    const player = {
-        name: "玩家",
-        x: 112,
-        hp: 100,
-        color: "#72ddff",
-        facing: 1
+    const explosionConfig = {
+        radius: 68,
+        maxDamage: 42,
+        minDamage: 8
     };
 
-    const enemy = {
-        name: "敌人",
-        x: 842,
-        hp: 100,
-        color: "#facc15",
-        facing: -1
-    };
+    const player = createFighter("玩家", 112, "#72ddff", 1);
+    const enemy = createFighter("敌人", 842, "#facc15", -1);
 
     const state = {
         turn: "player",
         projectile: null,
         trail: [],
+        explosion: null,
         message: "调整角度和力度，发射第一炮。",
         gameOver: false,
         lastTime: 0
     };
 
-    function terrainY(x) {
+    function createFighter(name, x, color, facing) {
+        return {
+            name,
+            x,
+            y: 0,
+            vy: 0,
+            hp: 100,
+            color,
+            facing,
+            bodyRadius: 22,
+            groundOffset: 24
+        };
+    }
+
+    function baseTerrainY(x) {
         const rolling = Math.sin(x * 0.012) * 20 + Math.sin(x * 0.027) * 9;
         const valley = Math.exp(-Math.pow((x - 480) / 210, 2)) * 58;
         return 406 + rolling + valley;
     }
 
-    function updateFighterPositions() {
-        player.y = terrainY(player.x) - 24;
-        enemy.y = terrainY(enemy.x) - 24;
+    function initializeTerrain() {
+        world.terrain = [];
+
+        for (let x = 0; x <= world.width; x += 1) {
+            world.terrain[x] = baseTerrainY(x);
+        }
+    }
+
+    function terrainY(x) {
+        const clampedX = Math.max(0, Math.min(world.width, Math.round(x)));
+        return world.terrain[clampedX] ?? world.height;
+    }
+
+    function placeFighterOnGround(fighter) {
+        fighter.y = terrainY(fighter.x) - fighter.groundOffset;
+        fighter.vy = 0;
+    }
+
+    function updateFighterPhysics(fighter, deltaSeconds) {
+        const groundY = terrainY(fighter.x) - fighter.groundOffset;
+
+        if (fighter.y < groundY) {
+            fighter.vy += world.gravity * deltaSeconds;
+            fighter.y += fighter.vy * deltaSeconds;
+
+            if (fighter.y >= groundY) {
+                fighter.y = groundY;
+                fighter.vy = 0;
+            }
+        } else {
+            fighter.y = groundY;
+            fighter.vy = 0;
+        }
     }
 
     function randomizeWind() {
@@ -64,11 +103,15 @@
     }
 
     function resetGame() {
+        initializeTerrain();
         player.hp = 100;
         enemy.hp = 100;
+        placeFighterOnGround(player);
+        placeFighterOnGround(enemy);
         state.turn = "player";
         state.projectile = null;
         state.trail = [];
+        state.explosion = null;
         state.message = "调整角度和力度，发射第一炮。";
         state.gameOver = false;
         randomizeWind();
@@ -101,10 +144,11 @@
         const speed = power * 4.6;
 
         state.projectile = {
-            x: shooter.x + direction * 28,
+            x: shooter.x + direction * 30,
             y: shooter.y - 22,
             vx: Math.cos(radians) * speed * direction,
             vy: -Math.sin(radians) * speed,
+            flightTime: 0,
             shooter,
             target,
             radius: 6
@@ -129,9 +173,13 @@
 
         window.setTimeout(() => {
             const distance = enemy.x - player.x;
-            const windCorrection = world.wind * 0.26;
-            const angle = 37 + Math.random() * 12;
-            const power = Math.min(92, Math.max(48, distance / 12.2 - windCorrection + (Math.random() * 12 - 6)));
+            const windCorrection = world.wind * 0.25;
+            const terrainCorrection = (enemy.y - player.y) * 0.04;
+            const angle = 38 + Math.random() * 12;
+            const power = Math.min(
+                94,
+                Math.max(48, distance / 12.4 - windCorrection + terrainCorrection + (Math.random() * 12 - 6))
+            );
 
             fireShot(enemy, player, angle, power);
         }, 650);
@@ -144,7 +192,7 @@
 
         if (player.hp <= 0 || enemy.hp <= 0) {
             state.gameOver = true;
-            state.message = player.hp > 0 ? "命中目标，玩家胜利。" : "玩家被击败，敌人胜利。";
+            state.message = player.hp > 0 ? "敌人被击败，玩家胜利。" : "玩家被击败，敌人胜利。";
             syncUi();
             return;
         }
@@ -161,20 +209,90 @@
         }
     }
 
-    function applyDamage(target, projectile) {
-        const dx = target.x - projectile.x;
-        const dy = (target.y - 14) - projectile.y;
-        const distance = Math.hypot(dx, dy);
+    function fighterCenter(fighter) {
+        return {
+            x: fighter.x,
+            y: fighter.y - 6
+        };
+    }
 
-        if (distance > 36) {
-            return false;
+    function distanceToFighter(x, y, fighter) {
+        const center = fighterCenter(fighter);
+        return Math.hypot(center.x - x, center.y - y);
+    }
+
+    function getProjectileFighterHit(projectile) {
+        const fighters = [player, enemy].filter(fighter => fighter !== projectile.shooter && fighter.hp > 0);
+
+        return fighters.find(fighter => (
+            distanceToFighter(projectile.x, projectile.y, fighter) <= fighter.bodyRadius + projectile.radius
+        ));
+    }
+
+    function damageFighterFromExplosion(fighter, explosionX, explosionY) {
+        const distance = distanceToFighter(explosionX, explosionY, fighter);
+
+        if (distance > explosionConfig.radius) {
+            return 0;
         }
 
-        const damage = Math.max(18, Math.round(38 - distance * 0.45));
-        target.hp = Math.max(0, target.hp - damage);
-        state.message = `${projectile.shooter.name}命中，造成 ${damage} 点伤害。`;
+        const falloff = 1 - distance / explosionConfig.radius;
+        const damage = Math.max(
+            explosionConfig.minDamage,
+            Math.round(explosionConfig.maxDamage * falloff)
+        );
+
+        fighter.hp = Math.max(0, fighter.hp - damage);
+        return damage;
+    }
+
+    function destroyTerrain(explosionX, explosionY, radius) {
+        const startX = Math.max(0, Math.floor(explosionX - radius));
+        const endX = Math.min(world.width, Math.ceil(explosionX + radius));
+
+        for (let x = startX; x <= endX; x += 1) {
+            const dx = x - explosionX;
+            const halfHeight = Math.sqrt(Math.max(0, radius * radius - dx * dx));
+            const craterBottom = explosionY + halfHeight;
+            const currentSurface = terrainY(x);
+
+            // Canvas 坐标越大越靠下；把爆炸圆内的地表向下推，形成坑洞。
+            if (craterBottom > currentSurface) {
+                world.terrain[x] = Math.min(world.height, craterBottom);
+            }
+        }
+    }
+
+    function explodeAt(x, y, shooter) {
+        const radius = explosionConfig.radius;
+        const playerDamage = damageFighterFromExplosion(player, x, y);
+        const enemyDamage = damageFighterFromExplosion(enemy, x, y);
+
+        destroyTerrain(x, y, radius);
+
+        state.explosion = {
+            x,
+            y,
+            radius,
+            ttl: 0.28
+        };
+
+        const damageParts = [];
+
+        if (playerDamage > 0) {
+            damageParts.push(`玩家 -${playerDamage}`);
+        }
+
+        if (enemyDamage > 0) {
+            damageParts.push(`敌人 -${enemyDamage}`);
+        }
+
+        state.message = damageParts.length > 0
+            ? `${shooter.name}爆炸命中：${damageParts.join("，")}。`
+            : `${shooter.name}爆炸，但没有单位在范围内。`;
+
         syncUi();
-        return true;
+        endTurn();
     }
 
     function updateProjectile(deltaSeconds) {
@@ -184,6 +302,7 @@
             return;
         }
 
+        projectile.flightTime += deltaSeconds;
         projectile.vx += world.wind * deltaSeconds;
         projectile.vy += world.gravity * deltaSeconds;
         projectile.x += projectile.vx * deltaSeconds;
@@ -191,24 +310,45 @@
 
         state.trail.push({ x: projectile.x, y: projectile.y });
 
-        if (state.trail.length > 42) {
+        if (state.trail.length > 48) {
             state.trail.shift();
         }
 
-        if (applyDamage(projectile.target, projectile)) {
-            endTurn();
+        const hitFighter = getProjectileFighterHit(projectile);
+
+        if (hitFighter) {
+            explodeAt(projectile.x, projectile.y, projectile.shooter);
             return;
         }
 
-        const hitTerrain = projectile.y >= terrainY(projectile.x);
+        const insideWorld = projectile.x >= 0 && projectile.x <= world.width;
+        const hitTerrain = insideWorld && projectile.y + projectile.radius >= terrainY(projectile.x);
         const outOfBounds =
-            projectile.x < -40 ||
-            projectile.x > world.width + 40 ||
-            projectile.y > world.height + 60;
+            projectile.x < -60 ||
+            projectile.x > world.width + 60 ||
+            projectile.y > world.height + 80 ||
+            projectile.flightTime > 8;
 
-        if (hitTerrain || outOfBounds) {
-            state.message = hitTerrain ? "炮弹击中地形。" : "炮弹飞出战场。";
+        if (hitTerrain) {
+            explodeAt(projectile.x, terrainY(projectile.x), projectile.shooter);
+            return;
+        }
+
+        if (outOfBounds) {
+            state.message = "炮弹飞出战场。";
             endTurn();
+        }
+    }
+
+    function updateExplosion(deltaSeconds) {
+        if (!state.explosion) {
+            return;
+        }
+
+        state.explosion.ttl -= deltaSeconds;
+
+        if (state.explosion.ttl <= 0) {
+            state.explosion = null;
         }
     }
 
@@ -241,7 +381,7 @@
         ctx.beginPath();
         ctx.moveTo(0, world.height);
 
-        for (let x = 0; x <= world.width; x += 4) {
+        for (let x = 0; x <= world.width; x += 2) {
             ctx.lineTo(x, terrainY(x));
         }
 
@@ -258,7 +398,7 @@
         ctx.lineWidth = 2;
         ctx.beginPath();
 
-        for (let x = 0; x <= world.width; x += 4) {
+        for (let x = 0; x <= world.width; x += 2) {
             const y = terrainY(x);
             if (x === 0) {
                 ctx.moveTo(x, y);
@@ -281,7 +421,7 @@
 
         ctx.fillStyle = fighter.color;
         ctx.beginPath();
-        ctx.arc(0, 0, 22, 0, Math.PI * 2);
+        ctx.arc(0, 0, fighter.bodyRadius, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.fillStyle = "#0f172a";
@@ -325,6 +465,28 @@
         ctx.fill();
     }
 
+    function drawExplosion() {
+        if (!state.explosion) {
+            return;
+        }
+
+        const progress = Math.max(0, state.explosion.ttl / 0.28);
+        ctx.save();
+        ctx.globalAlpha = 0.16 + progress * 0.28;
+        ctx.fillStyle = "#facc15";
+        ctx.beginPath();
+        ctx.arc(state.explosion.x, state.explosion.y, state.explosion.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalAlpha = 0.7;
+        ctx.strokeStyle = "#72ddff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(state.explosion.x, state.explosion.y, state.explosion.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+
     function drawAimGuide() {
         if (state.turn !== "player" || state.projectile || state.gameOver) {
             return;
@@ -346,9 +508,9 @@
 
     function drawMessage() {
         ctx.fillStyle = "rgba(3, 7, 18, 0.72)";
-        ctx.fillRect(24, 22, 420, 42);
+        ctx.fillRect(24, 22, 520, 42);
         ctx.strokeStyle = "rgba(56, 201, 255, 0.32)";
-        ctx.strokeRect(24, 22, 420, 42);
+        ctx.strokeRect(24, 22, 520, 42);
 
         ctx.fillStyle = "#dbeafe";
         ctx.font = "900 16px Arial";
@@ -356,13 +518,13 @@
     }
 
     function draw() {
-        updateFighterPositions();
         drawSky();
         drawTerrain();
         drawAimGuide();
         drawFighter(player);
         drawFighter(enemy);
         drawProjectile();
+        drawExplosion();
         drawMessage();
     }
 
@@ -370,7 +532,10 @@
         const deltaSeconds = Math.min(0.033, (time - state.lastTime) / 1000 || 0);
         state.lastTime = time;
 
+        updateFighterPhysics(player, deltaSeconds);
+        updateFighterPhysics(enemy, deltaSeconds);
         updateProjectile(deltaSeconds);
+        updateExplosion(deltaSeconds);
         draw();
         requestAnimationFrame(frame);
     }
@@ -380,7 +545,6 @@
     fireButton.addEventListener("click", playerFire);
     resetButton.addEventListener("click", resetGame);
 
-    updateFighterPositions();
     resetGame();
     requestAnimationFrame(frame);
 })();
