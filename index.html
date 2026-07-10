@@ -3,73 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flll Portfolio | Level Artist</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Fill Space</title>
+    <style>
+        :root {
+            --bg: #050914;
+            --bg-soft: #081020;
+            --card: #101827;
+            --text: #eaf2ff;
+            --muted: #a8bad3;
+            --cyan: #38c9ff;
+            --cyan-soft: rgba(56, 201, 255, 0.16);
+            --border: rgba(148, 163, 184, 0.22);
+            --radius: 14px;
+            --shadow: 0 24px 72px rgba(0, 0, 0, 0.32);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            background: var(--bg);
+        }
+
+        body {
+            margin: 0;
+            min-width: 1024px;
+            min-height: 100vh;
+            font-family: Arial, "Microsoft YaHei", "PingFang SC", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 72% 18%, rgba(56, 201, 255, 0.13), transparent 26%),
+                radial-gradient(circle at 28% 22%, rgba(56, 201, 255, 0.08), transparent 32%),
+                linear-gradient(180deg, #081122, var(--bg));
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .space-shell {
+            width: min(1180px, calc(100% - 64px));
+            margin-inline: auto;
+            padding: 92px 0;
+        }
+
+        .space-eyebrow {
+            margin: 0;
+            color: #72ddff;
+            font-size: 15px;
+            font-weight: 900;
+            letter-spacing: 0.32em;
+        }
+
+        h1 {
+            max-width: 960px;
+            margin: 22px 0 26px;
+            font-size: clamp(64px, 5.4vw, 92px);
+            line-height: 1.04;
+            letter-spacing: -0.06em;
+        }
+
+        .space-desc {
+            max-width: 760px;
+            margin: 0;
+            color: #c8d9ef;
+            font-size: 22px;
+            line-height: 1.65;
+        }
+
+        .space-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 22px;
+            margin-top: 72px;
+        }
+
+        .space-card {
+            min-height: 180px;
+            padding: 28px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: linear-gradient(180deg, rgba(18, 29, 49, 0.96), rgba(9, 15, 28, 0.96));
+            box-shadow: var(--shadow);
+        }
+
+        .space-card.active {
+            border-color: rgba(56, 201, 255, 0.42);
+            background:
+                radial-gradient(circle at 22% 12%, rgba(56, 201, 255, 0.12), transparent 30%),
+                linear-gradient(180deg, rgba(18, 29, 49, 0.96), rgba(9, 15, 28, 0.96));
+        }
+
+        .space-card small {
+            color: var(--cyan);
+            font-weight: 900;
+            letter-spacing: 0.18em;
+        }
+
+        .space-card h2 {
+            margin: 18px 0 12px;
+            font-size: 28px;
+            line-height: 1.1;
+        }
+
+        .space-card p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 16px;
+            line-height: 1.7;
+        }
+
+        .space-card:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.08);
+        }
+    </style>
 </head>
 <body>
+<main class="space-shell">
+    <p class="space-eyebrow">PERSONAL SPACE</p>
+    <h1>Fill Space</h1>
+    <p class="space-desc">一个长期维护的个人空间入口，用来连接作品集、实验室、工具、摄影展示和未来的技术 Demo。</p>
 
-<header class="hero">
-    <nav class="nav">
-        <div class="logo">Flll Portfolio</div>
+    <div class="space-grid">
+        <a class="space-card active" href="./modules/portfolio/">
+            <small>PORTFOLIO</small>
+            <h2>作品集</h2>
+            <p>当前完整作品集模块，包含展示、登录、编辑、Supabase 数据和图片上传。</p>
+        </a>
 
-        <div class="nav-links">
-            <a href="#works">作品</a>
-            <a href="#about">关于我</a>
-            <a href="#contact">联系</a>
-            <button type="button" id="editBtn" class="edit-btn">编辑</button>
+        <div class="space-card">
+            <small>LAB</small>
+            <h2>实验室</h2>
+            <p>未来放置 AI 实验、交互原型和技术探索。</p>
         </div>
-    </nav>
 
-    <div class="hero-content">
-        <p class="eyebrow">LEVEL ARTIST / ENVIRONMENT ARTIST</p>
-        <h1>游戏关卡美术作品集</h1>
-        <p class="hero-desc">专注游戏场景搭建、关卡氛围、灯光表现与环境叙事。</p>
+        <div class="space-card">
+            <small>TOOLS</small>
+            <h2>工具</h2>
+            <p>未来放置个人常用网页工具和小型效率应用。</p>
+        </div>
+
+        <div class="space-card">
+            <small>GALLERY</small>
+            <h2>摄影展示</h2>
+            <p>未来放置摄影、截图、视觉收藏和展示内容。</p>
+        </div>
+
+        <div class="space-card">
+            <small>PROJECTS</small>
+            <h2>独立项目</h2>
+            <p>未来放置网页小游戏、技术 Demo 和完整独立项目。</p>
+        </div>
     </div>
-</header>
-
-<main>
-    <section id="works" class="section works-section">
-        <div class="section-title">
-            <p>FEATURED WORKS</p>
-            <h2>精选作品</h2>
-        </div>
-
-        <div id="content" class="works-list"></div>
-
-        <div id="editorPanel" class="editor-panel hidden">
-            <button type="button" id="addWorkBtn">+ 添加作品</button>
-            <button type="button" id="exitEditBtn">退出编辑</button>
-            <button type="button" id="changePasswordBtn">修改密码</button>
-            <button type="button" id="logoutBtn">退出登录</button>
-            <button type="button" id="resetBtn" class="danger">重置云端内容</button>
-        </div>
-    </section>
-
-    <section id="about" class="section about-section">
-        <div class="about-card">
-            <p>ABOUT ME</p>
-            <h2>关于我</h2>
-            <span>
-                我是一名游戏关卡美术，关注场景空间、环境叙事、灯光氛围和玩家视觉体验。
-                这里可以补充你的项目经历、使用软件、擅长方向和联系方式。
-            </span>
-        </div>
-    </section>
-
-    <section id="contact" class="section contact-section">
-        <p>CONTACT</p>
-        <h2>联系我</h2>
-        <span>邮箱 / ArtStation / Bilibili / GitHub 等联系方式可以放在这里。</span>
-    </section>
 </main>
-
-<footer>
-    © 2026 Flll Portfolio
-</footer>
-
-<div id="modalRoot" class="modal-root hidden"></div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js"></script>
 </body>
 </html>
