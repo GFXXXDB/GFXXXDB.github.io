@@ -1,19 +1,29 @@
 (() => {
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
+    const $ = id => document.getElementById(id);
 
-    const angleInput = document.getElementById("angleInput");
-    const powerInput = document.getElementById("powerInput");
-    const angleValue = document.getElementById("angleValue");
-    const powerValue = document.getElementById("powerValue");
-    const fireButton = document.getElementById("fireButton");
-    const resetButton = document.getElementById("resetButton");
-    const turnText = document.getElementById("turnText");
-    const windText = document.getElementById("windText");
-    const playerHpText = document.getElementById("playerHpText");
-    const enemyHpText = document.getElementById("enemyHpText");
-    const playerHpBar = document.getElementById("playerHpBar");
-    const enemyHpBar = document.getElementById("enemyHpBar");
+    const screens = {
+        menu: $("menuScreen"),
+        map: $("mapScreen"),
+        room: $("roomScreen"),
+        battle: $("battleScreen"),
+        result: $("resultScreen")
+    };
+
+    const canvas = $("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const angleInput = $("angleInput");
+    const powerInput = $("powerInput");
+    const angleValue = $("angleValue");
+    const powerValue = $("powerValue");
+    const fireButton = $("fireButton");
+    const turnText = $("turnText");
+    const windText = $("windText");
+
+    const maps = [
+        { id: "plain", name: "地图1：碎石平原", preview: "", seed: 0.012, valley: 42, base: 405 },
+        { id: "valley", name: "地图2：中央低谷", preview: "valley", seed: 0.016, valley: 78, base: 394 },
+        { id: "ridge", name: "地图3：高地脊线", preview: "ridge", seed: 0.01, valley: 24, base: 382 }
+    ];
 
     const world = {
         width: canvas.width,
@@ -23,77 +33,266 @@
         terrain: []
     };
 
-    const explosionConfig = {
+    const explosion = {
         radius: 68,
         maxDamage: 42,
         minDamage: 8
     };
 
-    const player = createFighter("玩家", 112, "#72ddff", 1);
-    const enemy = createFighter("敌人", 842, "#facc15", -1);
-
     const state = {
-        turn: "player",
+        selectedMap: maps[0],
+        slots: [],
+        fighters: [],
+        currentTeam: "blue",
+        teamCursor: { blue: -1, red: -1 },
+        activeFighter: null,
         projectile: null,
         trail: [],
-        explosion: null,
-        message: "调整角度和力度，发射第一炮。",
+        blast: null,
+        message: "创建房间开始游戏。",
         gameOver: false,
-        lastTime: 0
+        lastTime: 0,
+        stats: {
+            playerDamage: 0,
+            playerKills: 0
+        }
     };
 
-    function createFighter(name, x, color, facing) {
-        return {
-            name,
-            x,
-            y: 0,
-            vy: 0,
-            hp: 100,
-            color,
-            facing,
-            bodyRadius: 22,
-            groundOffset: 24
-        };
+    function showScreen(name) {
+        Object.values(screens).forEach(screen => screen.classList.add("hidden"));
+        screens[name].classList.remove("hidden");
+    }
+
+    function createDefaultSlots() {
+        state.slots = [
+            { id: 1, team: "blue", name: "Player", type: "player", ready: false },
+            { id: 2, team: "blue", name: "", type: "empty", ready: false },
+            { id: 3, team: "red", name: "", type: "empty", ready: false },
+            { id: 4, team: "red", name: "", type: "empty", ready: false },
+            { id: 5, team: "red", name: "", type: "empty", ready: false }
+        ];
+    }
+
+    function renderMaps() {
+        $("mapList").innerHTML = maps.map(map => `
+            <button class="map-card ${map.id === state.selectedMap.id ? "selected" : ""}" data-map="${map.id}" type="button">
+                <div class="map-preview"><div class="preview-ground ${map.preview}"></div></div>
+                <h3>${map.name}</h3>
+                <p>简单地形预览，适合测试炮弹轨迹和地形破坏。</p>
+            </button>
+        `).join("");
+
+        document.querySelectorAll("[data-map]").forEach(button => {
+            button.addEventListener("click", () => {
+                state.selectedMap = maps.find(map => map.id === button.dataset.map);
+                createDefaultSlots();
+                renderRoom();
+                showScreen("room");
+            });
+        });
+    }
+
+    function renderRoom() {
+        $("roomNameText").textContent = "Artillery Room";
+        $("selectedMapText").textContent = `地图：${state.selectedMap.name}`;
+
+        renderTeam("blue", $("blueTeamList"));
+        renderTeam("red", $("redTeamList"));
+
+        const filled = state.slots.filter(slot => slot.type !== "empty");
+        const emptyCount = state.slots.length - filled.length;
+        const allReady = filled.length > 0 && filled.every(slot => slot.ready);
+        const hasBlue = filled.some(slot => slot.team === "blue");
+        const hasRed = filled.some(slot => slot.team === "red");
+
+        $("roomHintText").textContent = emptyCount > 0
+            ? `还有 ${emptyCount} 个空位，可自动填充 AI。`
+            : allReady ? "所有位置已准备，可以开始游戏。" : "还有角色未准备。";
+
+        $("startGameButton").disabled = emptyCount > 0 || !allReady || !hasBlue || !hasRed;
+    }
+
+    function renderTeam(team, container) {
+        container.innerHTML = state.slots
+            .filter(slot => slot.team === team)
+            .map(slot => {
+                if (slot.type === "empty") {
+                    return `
+                        <div class="slot-card">
+                            <div><strong>空位置</strong><small>${team === "blue" ? "蓝方" : "红方"}</small></div>
+                            <button type="button" data-add-ai="${slot.id}">添加AI</button>
+                        </div>
+                    `;
+                }
+
+                const typeText = slot.type === "player" ? "玩家" : "AI";
+                const action = slot.type === "ai"
+                    ? `<button type="button" class="ghost" data-remove-ai="${slot.id}">移除</button>`
+                    : "";
+
+                return `
+                    <div class="slot-card">
+                        <div><strong>${slot.name}</strong><small>${typeText} / ${slot.ready ? "已准备" : "准备中"}</small></div>
+                        ${action}
+                    </div>
+                `;
+            })
+            .join("");
+
+        container.querySelectorAll("[data-add-ai]").forEach(button => {
+            button.addEventListener("click", () => addAi(Number(button.dataset.addAi)));
+        });
+
+        container.querySelectorAll("[data-remove-ai]").forEach(button => {
+            button.addEventListener("click", () => removeAi(Number(button.dataset.removeAi)));
+        });
+    }
+
+    function addAi(slotId) {
+        const slot = state.slots.find(item => item.id === slotId);
+        if (!slot || slot.type !== "empty") return;
+        slot.type = "ai";
+        slot.name = `AI-${String(slot.id).padStart(2, "0")}`;
+        slot.ready = true;
+        renderRoom();
+    }
+
+    function removeAi(slotId) {
+        const slot = state.slots.find(item => item.id === slotId);
+        if (!slot || slot.type !== "ai") return;
+        slot.type = "empty";
+        slot.name = "";
+        slot.ready = false;
+        renderRoom();
+    }
+
+    function autoFillAi() {
+        state.slots.forEach(slot => {
+            if (slot.type === "empty") {
+                slot.type = "ai";
+                slot.name = `AI-${String(slot.id).padStart(2, "0")}`;
+                slot.ready = true;
+            }
+        });
+        renderRoom();
+    }
+
+    function setPlayerReady() {
+        const playerSlot = state.slots.find(slot => slot.type === "player");
+        playerSlot.ready = true;
+        renderRoom();
     }
 
     function baseTerrainY(x) {
-        const rolling = Math.sin(x * 0.012) * 20 + Math.sin(x * 0.027) * 9;
-        const valley = Math.exp(-Math.pow((x - 480) / 210, 2)) * 58;
-        return 406 + rolling + valley;
+        const map = state.selectedMap;
+        const rolling = Math.sin(x * map.seed) * 20 + Math.sin(x * 0.027) * 9;
+        const valley = Math.exp(-Math.pow((x - 480) / 210, 2)) * map.valley;
+        return map.base + rolling + valley;
     }
 
     function initializeTerrain() {
         world.terrain = [];
-
         for (let x = 0; x <= world.width; x += 1) {
             world.terrain[x] = baseTerrainY(x);
         }
     }
 
     function terrainY(x) {
-        const clampedX = Math.max(0, Math.min(world.width, Math.round(x)));
-        return world.terrain[clampedX] ?? world.height;
+        return world.terrain[Math.max(0, Math.min(world.width, Math.round(x)))] ?? world.height;
     }
 
-    function placeFighterOnGround(fighter) {
+    function createFighter(slot, index, teamIndex) {
+        const isBlue = slot.team === "blue";
+        const x = isBlue ? 110 + teamIndex * 58 : world.width - 110 - teamIndex * 58;
+        return {
+            id: slot.id,
+            name: slot.name,
+            type: slot.type,
+            team: slot.team,
+            x,
+            y: 0,
+            vy: 0,
+            hp: 100,
+            maxHp: 100,
+            color: isBlue ? "#72ddff" : "#f87171",
+            facing: isBlue ? 1 : -1,
+            bodyRadius: 20,
+            groundOffset: 24,
+            totalDamage: 0,
+            kills: 0,
+            index
+        };
+    }
+
+    function startBattle() {
+        initializeTerrain();
+        const teamCounts = { blue: 0, red: 0 };
+        state.fighters = state.slots
+            .filter(slot => slot.type !== "empty")
+            .map((slot, index) => createFighter(slot, index, teamCounts[slot.team]++));
+
+        state.fighters.forEach(placeOnGround);
+        state.currentTeam = "blue";
+        state.teamCursor = { blue: -1, red: -1 };
+        state.projectile = null;
+        state.trail = [];
+        state.blast = null;
+        state.gameOver = false;
+        state.stats = { playerDamage: 0, playerKills: 0 };
+        randomizeWind();
+        showScreen("battle");
+        nextTurn("blue");
+    }
+
+    function placeOnGround(fighter) {
         fighter.y = terrainY(fighter.x) - fighter.groundOffset;
         fighter.vy = 0;
     }
 
-    function updateFighterPhysics(fighter, deltaSeconds) {
+    function updateFighterPhysics(fighter, dt) {
+        if (fighter.hp <= 0) return;
         const groundY = terrainY(fighter.x) - fighter.groundOffset;
-
         if (fighter.y < groundY) {
-            fighter.vy += world.gravity * deltaSeconds;
-            fighter.y += fighter.vy * deltaSeconds;
-
-            if (fighter.y >= groundY) {
-                fighter.y = groundY;
-                fighter.vy = 0;
-            }
+            fighter.vy += world.gravity * dt;
+            fighter.y = Math.min(groundY, fighter.y + fighter.vy * dt);
         } else {
             fighter.y = groundY;
             fighter.vy = 0;
+        }
+    }
+
+    function aliveTeam(team) {
+        return state.fighters.filter(fighter => fighter.team === team && fighter.hp > 0);
+    }
+
+    function getWinner() {
+        const blueAlive = aliveTeam("blue").length > 0;
+        const redAlive = aliveTeam("red").length > 0;
+        if (blueAlive && redAlive) return null;
+        return blueAlive ? "blue" : "red";
+    }
+
+    function nextTurn(team) {
+        const winner = getWinner();
+        if (winner) {
+            finishBattle(winner);
+            return;
+        }
+
+        const alive = aliveTeam(team);
+        if (alive.length === 0) {
+            nextTurn(team === "blue" ? "red" : "blue");
+            return;
+        }
+
+        state.currentTeam = team;
+        state.teamCursor[team] = (state.teamCursor[team] + 1) % alive.length;
+        state.activeFighter = alive[state.teamCursor[team]];
+        state.message = `${state.activeFighter.name} 行动。`;
+        syncBattleUi();
+
+        if (state.activeFighter.type === "ai") {
+            setTimeout(aiFire, 650);
         }
     }
 
@@ -102,254 +301,163 @@
         windText.textContent = `风向 ${world.wind > 0 ? "→" : world.wind < 0 ? "←" : ""} ${Math.abs(world.wind)}`;
     }
 
-    function resetGame() {
-        initializeTerrain();
-        player.hp = 100;
-        enemy.hp = 100;
-        placeFighterOnGround(player);
-        placeFighterOnGround(enemy);
-        state.turn = "player";
-        state.projectile = null;
-        state.trail = [];
-        state.explosion = null;
-        state.message = "调整角度和力度，发射第一炮。";
-        state.gameOver = false;
-        randomizeWind();
-        syncUi();
-    }
-
-    function syncUi() {
+    function syncBattleUi() {
         angleValue.textContent = `${angleInput.value}°`;
         powerValue.textContent = powerInput.value;
-
-        playerHpText.textContent = `${Math.max(0, player.hp)} HP`;
-        enemyHpText.textContent = `${Math.max(0, enemy.hp)} HP`;
-        playerHpBar.style.width = `${Math.max(0, player.hp)}%`;
-        enemyHpBar.style.width = `${Math.max(0, enemy.hp)}%`;
-
-        if (state.gameOver) {
-            turnText.textContent = player.hp > 0 ? "玩家胜利" : "敌人胜利";
-        } else if (state.projectile) {
-            turnText.textContent = "炮弹飞行中";
-        } else {
-            turnText.textContent = state.turn === "player" ? "玩家回合" : "敌人回合";
-        }
-
-        fireButton.disabled = state.turn !== "player" || !!state.projectile || state.gameOver;
+        const blueHp = aliveTeam("blue").reduce((sum, fighter) => sum + fighter.hp, 0);
+        const redHp = aliveTeam("red").reduce((sum, fighter) => sum + fighter.hp, 0);
+        $("blueTeamHpText").textContent = `${blueHp} HP`;
+        $("redTeamHpText").textContent = `${redHp} HP`;
+        turnText.textContent = state.projectile ? "炮弹飞行中" : `${state.activeFighter?.name ?? "-"} 回合`;
+        fireButton.disabled = !state.activeFighter || state.activeFighter.type !== "player" || !!state.projectile || state.gameOver;
     }
 
-    function fireShot(shooter, target, angleDegrees, power) {
-        const direction = shooter.facing;
+    function fireShot(shooter, angleDegrees, power) {
         const radians = angleDegrees * Math.PI / 180;
         const speed = power * 4.6;
-
         state.projectile = {
-            x: shooter.x + direction * 30,
+            x: shooter.x + shooter.facing * 30,
             y: shooter.y - 22,
-            vx: Math.cos(radians) * speed * direction,
+            vx: Math.cos(radians) * speed * shooter.facing,
             vy: -Math.sin(radians) * speed,
             flightTime: 0,
             shooter,
-            target,
             radius: 6
         };
-
         state.trail = [];
-        state.message = `${shooter.name}发射！`;
-        syncUi();
+        state.message = `${shooter.name} 发射！`;
+        syncBattleUi();
     }
 
     function playerFire() {
-        fireShot(player, enemy, Number(angleInput.value), Number(powerInput.value));
+        fireShot(state.activeFighter, Number(angleInput.value), Number(powerInput.value));
     }
 
-    function enemyFire() {
-        if (state.gameOver) {
-            return;
-        }
-
-        state.turn = "enemy";
-        syncUi();
-
-        window.setTimeout(() => {
-            const distance = enemy.x - player.x;
-            const windCorrection = world.wind * 0.25;
-            const terrainCorrection = (enemy.y - player.y) * 0.04;
-            const angle = 38 + Math.random() * 12;
-            const power = Math.min(
-                94,
-                Math.max(48, distance / 12.4 - windCorrection + terrainCorrection + (Math.random() * 12 - 6))
-            );
-
-            fireShot(enemy, player, angle, power);
-        }, 650);
-    }
-
-    function endTurn() {
-        state.projectile = null;
-        state.trail = [];
-        randomizeWind();
-
-        if (player.hp <= 0 || enemy.hp <= 0) {
-            state.gameOver = true;
-            state.message = player.hp > 0 ? "敌人被击败，玩家胜利。" : "玩家被击败，敌人胜利。";
-            syncUi();
-            return;
-        }
-
-        if (state.turn === "player") {
-            state.turn = "enemy";
-            state.message = "敌人正在计算弹道。";
-            syncUi();
-            enemyFire();
-        } else {
-            state.turn = "player";
-            state.message = "玩家回合。";
-            syncUi();
-        }
-    }
-
-    function fighterCenter(fighter) {
-        return {
-            x: fighter.x,
-            y: fighter.y - 6
-        };
+    function aiFire() {
+        if (state.gameOver || !state.activeFighter || state.activeFighter.type !== "ai" || state.projectile) return;
+        const shooter = state.activeFighter;
+        const targets = aliveTeam(shooter.team === "blue" ? "red" : "blue");
+        const target = targets[Math.floor(Math.random() * targets.length)];
+        const distance = Math.abs(target.x - shooter.x);
+        const windCorrection = world.wind * 0.25 * shooter.facing;
+        const heightCorrection = (shooter.y - target.y) * 0.04;
+        const angle = 36 + Math.random() * 14;
+        const power = Math.min(95, Math.max(42, distance / 12.2 + windCorrection + heightCorrection + (Math.random() * 12 - 6)));
+        fireShot(shooter, angle, power);
     }
 
     function distanceToFighter(x, y, fighter) {
-        const center = fighterCenter(fighter);
-        return Math.hypot(center.x - x, center.y - y);
+        return Math.hypot(fighter.x - x, fighter.y - 6 - y);
     }
 
-    function getProjectileFighterHit(projectile) {
-        const fighters = [player, enemy].filter(fighter => fighter !== projectile.shooter && fighter.hp > 0);
-
-        return fighters.find(fighter => (
+    function projectileHitFighter(projectile) {
+        return state.fighters.find(fighter => (
+            fighter.hp > 0 &&
+            fighter.id !== projectile.shooter.id &&
             distanceToFighter(projectile.x, projectile.y, fighter) <= fighter.bodyRadius + projectile.radius
         ));
     }
 
-    function damageFighterFromExplosion(fighter, explosionX, explosionY) {
-        const distance = distanceToFighter(explosionX, explosionY, fighter);
-
-        if (distance > explosionConfig.radius) {
-            return 0;
-        }
-
-        const falloff = 1 - distance / explosionConfig.radius;
-        const damage = Math.max(
-            explosionConfig.minDamage,
-            Math.round(explosionConfig.maxDamage * falloff)
-        );
-
-        fighter.hp = Math.max(0, fighter.hp - damage);
-        return damage;
-    }
-
-    function destroyTerrain(explosionX, explosionY, radius) {
-        const startX = Math.max(0, Math.floor(explosionX - radius));
-        const endX = Math.min(world.width, Math.ceil(explosionX + radius));
-
-        for (let x = startX; x <= endX; x += 1) {
-            const dx = x - explosionX;
-            const halfHeight = Math.sqrt(Math.max(0, radius * radius - dx * dx));
-            const craterBottom = explosionY + halfHeight;
-            const currentSurface = terrainY(x);
-
-            // Canvas 坐标越大越靠下；把爆炸圆内的地表向下推，形成坑洞。
-            if (craterBottom > currentSurface) {
-                world.terrain[x] = Math.min(world.height, craterBottom);
+    function destroyTerrain(x, y, radius) {
+        for (let tx = Math.max(0, Math.floor(x - radius)); tx <= Math.min(world.width, Math.ceil(x + radius)); tx += 1) {
+            const dx = tx - x;
+            const bottom = y + Math.sqrt(Math.max(0, radius * radius - dx * dx));
+            if (bottom > terrainY(tx)) {
+                world.terrain[tx] = Math.min(world.height, bottom);
             }
         }
     }
 
     function explodeAt(x, y, shooter) {
-        const radius = explosionConfig.radius;
-        const playerDamage = damageFighterFromExplosion(player, x, y);
-        const enemyDamage = damageFighterFromExplosion(enemy, x, y);
+        const damaged = [];
+        state.fighters.forEach(fighter => {
+            if (fighter.hp <= 0) return;
+            const distance = distanceToFighter(x, y, fighter);
+            if (distance > explosion.radius) return;
+            const oldHp = fighter.hp;
+            const falloff = 1 - distance / explosion.radius;
+            const damage = Math.max(explosion.minDamage, Math.round(explosion.maxDamage * falloff));
+            fighter.hp = Math.max(0, fighter.hp - damage);
+            shooter.totalDamage += oldHp - fighter.hp;
+            if (shooter.type === "player") state.stats.playerDamage += oldHp - fighter.hp;
+            if (oldHp > 0 && fighter.hp <= 0) {
+                shooter.kills += 1;
+                if (shooter.type === "player") state.stats.playerKills += 1;
+            }
+            damaged.push(`${fighter.name}-${oldHp - fighter.hp}`);
+        });
 
-        destroyTerrain(x, y, radius);
-
-        state.explosion = {
-            x,
-            y,
-            radius,
-            ttl: 0.28
-        };
-
-        const damageParts = [];
-
-        if (playerDamage > 0) {
-            damageParts.push(`玩家 -${playerDamage}`);
-        }
-
-        if (enemyDamage > 0) {
-            damageParts.push(`敌人 -${enemyDamage}`);
-        }
-
-        state.message = damageParts.length > 0
-            ? `${shooter.name}爆炸命中：${damageParts.join("，")}。`
-            : `${shooter.name}爆炸，但没有单位在范围内。`;
-
-        syncUi();
-        endTurn();
+        destroyTerrain(x, y, explosion.radius);
+        state.blast = { x, y, radius: explosion.radius, ttl: 0.28 };
+        state.message = damaged.length ? `爆炸伤害：${damaged.join("，")}` : "爆炸未命中单位。";
+        endAction();
     }
 
-    function updateProjectile(deltaSeconds) {
-        const projectile = state.projectile;
+    function endAction() {
+        state.projectile = null;
+        state.trail = [];
+        randomizeWind();
+        syncBattleUi();
 
-        if (!projectile) {
+        const winner = getWinner();
+        if (winner) {
+            finishBattle(winner);
             return;
         }
 
-        projectile.flightTime += deltaSeconds;
-        projectile.vx += world.wind * deltaSeconds;
-        projectile.vy += world.gravity * deltaSeconds;
-        projectile.x += projectile.vx * deltaSeconds;
-        projectile.y += projectile.vy * deltaSeconds;
+        setTimeout(() => nextTurn(state.currentTeam === "blue" ? "red" : "blue"), 600);
+    }
 
+    function updateProjectile(dt) {
+        const projectile = state.projectile;
+        if (!projectile) return;
+        projectile.flightTime += dt;
+        projectile.vx += world.wind * dt;
+        projectile.vy += world.gravity * dt;
+        projectile.x += projectile.vx * dt;
+        projectile.y += projectile.vy * dt;
         state.trail.push({ x: projectile.x, y: projectile.y });
+        if (state.trail.length > 48) state.trail.shift();
 
-        if (state.trail.length > 48) {
-            state.trail.shift();
-        }
-
-        const hitFighter = getProjectileFighterHit(projectile);
-
-        if (hitFighter) {
+        if (projectileHitFighter(projectile)) {
             explodeAt(projectile.x, projectile.y, projectile.shooter);
             return;
         }
 
-        const insideWorld = projectile.x >= 0 && projectile.x <= world.width;
-        const hitTerrain = insideWorld && projectile.y + projectile.radius >= terrainY(projectile.x);
-        const outOfBounds =
-            projectile.x < -60 ||
-            projectile.x > world.width + 60 ||
-            projectile.y > world.height + 80 ||
-            projectile.flightTime > 8;
-
-        if (hitTerrain) {
+        const inWorld = projectile.x >= 0 && projectile.x <= world.width;
+        if (inWorld && projectile.y + projectile.radius >= terrainY(projectile.x)) {
             explodeAt(projectile.x, terrainY(projectile.x), projectile.shooter);
             return;
         }
 
-        if (outOfBounds) {
+        if (projectile.x < -60 || projectile.x > world.width + 60 || projectile.y > world.height + 80 || projectile.flightTime > 8) {
             state.message = "炮弹飞出战场。";
-            endTurn();
+            endAction();
         }
     }
 
-    function updateExplosion(deltaSeconds) {
-        if (!state.explosion) {
-            return;
-        }
+    function finishBattle(winner) {
+        state.gameOver = true;
+        state.projectile = null;
+        const playerWon = winner === "blue";
+        $("resultTitle").textContent = playerWon ? "胜利" : "失败";
+        const remainingHp = aliveTeam(winner).reduce((sum, fighter) => sum + fighter.hp, 0);
+        $("resultStats").innerHTML = `
+            <div class="stat-card"><small>总伤害</small><strong>${state.stats.playerDamage}</strong></div>
+            <div class="stat-card"><small>击杀数</small><strong>${state.stats.playerKills}</strong></div>
+            <div class="stat-card"><small>胜方剩余HP</small><strong>${remainingHp}</strong></div>
+        `;
+        showScreen("result");
+    }
 
-        state.explosion.ttl -= deltaSeconds;
-
-        if (state.explosion.ttl <= 0) {
-            state.explosion = null;
-        }
+    function replay() {
+        state.slots.forEach(slot => {
+            if (slot.type !== "empty") slot.ready = slot.type === "ai";
+        });
+        const playerSlot = state.slots.find(slot => slot.type === "player");
+        if (playerSlot) playerSlot.ready = false;
+        renderRoom();
+        showScreen("room");
     }
 
     function drawSky() {
@@ -358,21 +466,11 @@
         gradient.addColorStop(1, "#050914");
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, world.width, world.height);
-
         ctx.strokeStyle = "rgba(56, 201, 255, 0.08)";
-        ctx.lineWidth = 1;
-
         for (let x = 0; x < world.width; x += 48) {
             ctx.beginPath();
             ctx.moveTo(x, 0);
             ctx.lineTo(x, world.height);
-            ctx.stroke();
-        }
-
-        for (let y = 0; y < world.height; y += 48) {
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(world.width, y);
             ctx.stroke();
         }
     }
@@ -380,76 +478,52 @@
     function drawTerrain() {
         ctx.beginPath();
         ctx.moveTo(0, world.height);
-
-        for (let x = 0; x <= world.width; x += 2) {
-            ctx.lineTo(x, terrainY(x));
-        }
-
+        for (let x = 0; x <= world.width; x += 2) ctx.lineTo(x, terrainY(x));
         ctx.lineTo(world.width, world.height);
         ctx.closePath();
-
         const gradient = ctx.createLinearGradient(0, 350, 0, world.height);
         gradient.addColorStop(0, "#164e63");
         gradient.addColorStop(1, "#0f172a");
         ctx.fillStyle = gradient;
         ctx.fill();
-
         ctx.strokeStyle = "rgba(114, 221, 255, 0.48)";
         ctx.lineWidth = 2;
-        ctx.beginPath();
-
-        for (let x = 0; x <= world.width; x += 2) {
-            const y = terrainY(x);
-            if (x === 0) {
-                ctx.moveTo(x, y);
-            } else {
-                ctx.lineTo(x, y);
-            }
-        }
-
         ctx.stroke();
     }
 
     function drawFighter(fighter) {
+        if (fighter.hp <= 0) return;
         ctx.save();
         ctx.translate(fighter.x, fighter.y);
-
-        ctx.fillStyle = "rgba(2, 6, 23, 0.62)";
-        ctx.beginPath();
-        ctx.ellipse(0, 28, 34, 9, 0, 0, Math.PI * 2);
-        ctx.fill();
-
         ctx.fillStyle = fighter.color;
         ctx.beginPath();
         ctx.arc(0, 0, fighter.bodyRadius, 0, Math.PI * 2);
         ctx.fill();
-
         ctx.fillStyle = "#0f172a";
-        ctx.fillRect(-14, 12, 28, 18);
-
+        ctx.fillRect(-13, 12, 26, 18);
         ctx.strokeStyle = fighter.color;
-        ctx.lineWidth = 8;
+        ctx.lineWidth = 7;
         ctx.lineCap = "round";
         ctx.beginPath();
         ctx.moveTo(10 * fighter.facing, -4);
-        ctx.lineTo(36 * fighter.facing, -18);
+        ctx.lineTo(34 * fighter.facing, -18);
         ctx.stroke();
-
         ctx.fillStyle = "#eaf2ff";
-        ctx.font = "900 14px Arial";
+        ctx.font = "900 13px Arial";
         ctx.textAlign = "center";
-        ctx.fillText(fighter.name, 0, -34);
-
+        ctx.fillText(`${fighter.name} ${fighter.hp}`, 0, -32);
+        if (fighter === state.activeFighter) {
+            ctx.strokeStyle = "#facc15";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, 27, 0, Math.PI * 2);
+            ctx.stroke();
+        }
         ctx.restore();
     }
 
     function drawProjectile() {
-        const projectile = state.projectile;
-
-        if (!projectile) {
-            return;
-        }
-
+        if (!state.projectile) return;
         state.trail.forEach((point, index) => {
             ctx.globalAlpha = index / state.trail.length;
             ctx.fillStyle = "#72ddff";
@@ -457,94 +531,93 @@
             ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
             ctx.fill();
         });
-
         ctx.globalAlpha = 1;
         ctx.fillStyle = "#facc15";
         ctx.beginPath();
-        ctx.arc(projectile.x, projectile.y, projectile.radius, 0, Math.PI * 2);
+        ctx.arc(state.projectile.x, state.projectile.y, state.projectile.radius, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    function drawExplosion() {
-        if (!state.explosion) {
+    function drawBlast(dt) {
+        if (!state.blast) return;
+        state.blast.ttl -= dt;
+        if (state.blast.ttl <= 0) {
+            state.blast = null;
             return;
         }
-
-        const progress = Math.max(0, state.explosion.ttl / 0.28);
-        ctx.save();
-        ctx.globalAlpha = 0.16 + progress * 0.28;
+        ctx.globalAlpha = 0.25;
         ctx.fillStyle = "#facc15";
         ctx.beginPath();
-        ctx.arc(state.explosion.x, state.explosion.y, state.explosion.radius, 0, Math.PI * 2);
+        ctx.arc(state.blast.x, state.blast.y, state.blast.radius, 0, Math.PI * 2);
         ctx.fill();
-
-        ctx.globalAlpha = 0.7;
-        ctx.strokeStyle = "#72ddff";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(state.explosion.x, state.explosion.y, state.explosion.radius, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
+        ctx.globalAlpha = 1;
     }
 
-    function drawAimGuide() {
-        if (state.turn !== "player" || state.projectile || state.gameOver) {
-            return;
-        }
-
+    function drawAim() {
+        if (!state.activeFighter || state.activeFighter.type !== "player" || state.projectile || state.gameOver) return;
         const angle = Number(angleInput.value) * Math.PI / 180;
-        const power = Number(powerInput.value);
-        const length = 34 + power * 0.55;
-
+        const length = 34 + Number(powerInput.value) * 0.55;
         ctx.strokeStyle = "rgba(114, 221, 255, 0.72)";
         ctx.lineWidth = 3;
         ctx.setLineDash([8, 8]);
         ctx.beginPath();
-        ctx.moveTo(player.x, player.y - 22);
-        ctx.lineTo(player.x + Math.cos(angle) * length, player.y - 22 - Math.sin(angle) * length);
+        ctx.moveTo(state.activeFighter.x, state.activeFighter.y - 22);
+        ctx.lineTo(
+            state.activeFighter.x + Math.cos(angle) * length * state.activeFighter.facing,
+            state.activeFighter.y - 22 - Math.sin(angle) * length
+        );
         ctx.stroke();
         ctx.setLineDash([]);
     }
 
     function drawMessage() {
         ctx.fillStyle = "rgba(3, 7, 18, 0.72)";
-        ctx.fillRect(24, 22, 520, 42);
+        ctx.fillRect(24, 22, 560, 42);
         ctx.strokeStyle = "rgba(56, 201, 255, 0.32)";
-        ctx.strokeRect(24, 22, 520, 42);
-
+        ctx.strokeRect(24, 22, 560, 42);
         ctx.fillStyle = "#dbeafe";
         ctx.font = "900 16px Arial";
         ctx.fillText(state.message, 42, 49);
     }
 
-    function draw() {
-        drawSky();
-        drawTerrain();
-        drawAimGuide();
-        drawFighter(player);
-        drawFighter(enemy);
-        drawProjectile();
-        drawExplosion();
-        drawMessage();
-    }
-
     function frame(time) {
-        const deltaSeconds = Math.min(0.033, (time - state.lastTime) / 1000 || 0);
+        const dt = Math.min(0.033, (time - state.lastTime) / 1000 || 0);
         state.lastTime = time;
-
-        updateFighterPhysics(player, deltaSeconds);
-        updateFighterPhysics(enemy, deltaSeconds);
-        updateProjectile(deltaSeconds);
-        updateExplosion(deltaSeconds);
-        draw();
+        if (!screens.battle.classList.contains("hidden")) {
+            state.fighters.forEach(fighter => updateFighterPhysics(fighter, dt));
+            updateProjectile(dt);
+            syncBattleUi();
+            drawSky();
+            drawTerrain();
+            drawAim();
+            state.fighters.forEach(drawFighter);
+            drawProjectile();
+            drawBlast(dt);
+            drawMessage();
+        }
         requestAnimationFrame(frame);
     }
 
-    angleInput.addEventListener("input", syncUi);
-    powerInput.addEventListener("input", syncUi);
+    $("createRoomButton").addEventListener("click", () => {
+        renderMaps();
+        showScreen("map");
+    });
+    $("autoFillButton").addEventListener("click", autoFillAi);
+    $("readyButton").addEventListener("click", setPlayerReady);
+    $("startGameButton").addEventListener("click", startBattle);
+    $("backToRoomButton").addEventListener("click", () => {
+        renderRoom();
+        showScreen("room");
+    });
+    $("playAgainButton").addEventListener("click", replay);
+    $("returnRoomButton").addEventListener("click", replay);
+    angleInput.addEventListener("input", syncBattleUi);
+    powerInput.addEventListener("input", syncBattleUi);
     fireButton.addEventListener("click", playerFire);
-    resetButton.addEventListener("click", resetGame);
 
-    resetGame();
+    createDefaultSlots();
+    renderMaps();
+    renderRoom();
+    showScreen("menu");
     requestAnimationFrame(frame);
 })();

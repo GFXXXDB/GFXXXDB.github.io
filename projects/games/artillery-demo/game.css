@@ -8,6 +8,7 @@
     --cyan-soft: rgba(56, 201, 255, 0.16);
     --cyan-line: rgba(56, 201, 255, 0.42);
     --danger: #ef4444;
+    --red: #f87171;
     --border: rgba(148, 163, 184, 0.22);
     --radius: 14px;
     --shadow: 0 24px 72px rgba(0, 0, 0, 0.32);
@@ -44,7 +45,33 @@ input {
 }
 
 button {
+    height: 46px;
+    cursor: pointer;
     border: 0;
+    border-radius: 999px;
+    background: var(--cyan);
+    color: #04101f;
+    font-weight: 900;
+    transition: transform 0.16s ease, filter 0.16s ease, opacity 0.16s ease;
+}
+
+button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.42;
+}
+
+button.ghost {
+    background: #1e293b;
+    color: #fff;
+}
+
+.hidden {
+    display: none !important;
 }
 
 .game-shell {
@@ -67,7 +94,8 @@ button {
     font-weight: 900;
 }
 
-.eyebrow {
+.eyebrow,
+.screen-kicker {
     margin: 0;
     color: #72ddff;
     font-size: 14px;
@@ -75,11 +103,27 @@ button {
     letter-spacing: 0.28em;
 }
 
+h1,
+h2,
+h3 {
+    letter-spacing: -0.05em;
+}
+
 h1 {
     margin: 12px 0 0;
     font-size: 54px;
     line-height: 1;
-    letter-spacing: -0.05em;
+}
+
+h2 {
+    margin: 12px 0 16px;
+    font-size: 36px;
+    line-height: 1.1;
+}
+
+h3 {
+    margin: 0 0 16px;
+    font-size: 22px;
 }
 
 .build-label {
@@ -95,7 +139,8 @@ h1 {
     letter-spacing: 0.16em;
 }
 
-.game-desc {
+.game-desc,
+.screen-copy {
     margin: 0;
     color: var(--muted);
     font-size: 16px;
@@ -110,6 +155,158 @@ h1 {
     box-shadow: var(--shadow);
 }
 
+.screen > button,
+.result-actions button,
+.room-actions button {
+    min-width: 132px;
+    padding: 0 22px;
+}
+
+#menuScreen button {
+    margin-top: 26px;
+}
+
+.map-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-top: 20px;
+}
+
+.map-card,
+.slot-card,
+.stat-card {
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: rgba(3, 7, 18, 0.58);
+}
+
+.map-card {
+    height: auto;
+    padding: 16px;
+    cursor: pointer;
+    color: inherit;
+    text-align: left;
+}
+
+.map-card.selected {
+    border-color: var(--cyan-line);
+    background: var(--cyan-soft);
+}
+
+.map-preview {
+    height: 110px;
+    margin-bottom: 14px;
+    overflow: hidden;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: #050914;
+}
+
+.preview-ground {
+    width: 100%;
+    height: 100%;
+    background:
+        radial-gradient(circle at 28% 72%, rgba(56, 201, 255, 0.22), transparent 18%),
+        linear-gradient(170deg, transparent 42%, rgba(22, 78, 99, 0.86) 43%, #0f172a 100%);
+}
+
+.preview-ground.valley {
+    background:
+        radial-gradient(circle at 50% 78%, rgba(5, 9, 20, 0.9), transparent 22%),
+        linear-gradient(170deg, transparent 38%, rgba(22, 78, 99, 0.86) 39%, #0f172a 100%);
+}
+
+.preview-ground.ridge {
+    background:
+        radial-gradient(circle at 76% 58%, rgba(56, 201, 255, 0.18), transparent 14%),
+        linear-gradient(155deg, transparent 48%, rgba(22, 78, 99, 0.86) 49%, #0f172a 100%);
+}
+
+.map-card h3,
+.map-card p {
+    margin: 0;
+}
+
+.map-card p {
+    margin-top: 8px;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.room-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    align-items: start;
+}
+
+.room-actions,
+.result-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.room-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    margin: 10px 0 22px;
+    color: var(--muted);
+    font-weight: 900;
+}
+
+.team-board {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+.team-column {
+    padding: 18px;
+    border-radius: var(--radius);
+    border: 1px solid var(--cyan-line);
+    background: rgba(56, 201, 255, 0.08);
+}
+
+.team-column.red {
+    border-color: rgba(248, 113, 113, 0.42);
+    background: rgba(248, 113, 113, 0.08);
+}
+
+.slot-list {
+    display: grid;
+    gap: 12px;
+}
+
+.slot-card {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 12px;
+    min-height: 74px;
+    padding: 14px;
+}
+
+.slot-card strong {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.slot-card small {
+    color: var(--muted);
+    font-weight: 900;
+}
+
+.slot-card button {
+    min-width: 94px;
+    height: 36px;
+    padding: 0 14px;
+    font-size: 13px;
+}
+
 .status-row {
     display: grid;
     grid-template-columns: 1fr 220px 1fr;
@@ -118,37 +315,16 @@ h1 {
     margin-bottom: 18px;
 }
 
-.fighter-status {
-    display: grid;
-    grid-template-columns: 54px 1fr 72px;
-    align-items: center;
+.team-status {
+    display: flex;
+    justify-content: space-between;
     gap: 12px;
     color: #dbeafe;
     font-weight: 900;
 }
 
-.fighter-status.right {
-    grid-template-columns: 54px 1fr 72px;
-}
-
-.hp-bar {
-    height: 12px;
-    overflow: hidden;
-    border-radius: 999px;
-    background: rgba(2, 6, 23, 0.72);
-    border: 1px solid rgba(148, 163, 184, 0.22);
-}
-
-.hp-fill {
-    width: 100%;
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, #22c55e, #72ddff);
-    transition: width 0.2s ease;
-}
-
-.hp-fill.enemy {
-    background: linear-gradient(90deg, #ef4444, #facc15);
+.team-status.red strong {
+    color: var(--red);
 }
 
 .turn-status {
@@ -179,7 +355,7 @@ h1 {
 
 .control-panel {
     display: grid;
-    grid-template-columns: 1fr 1fr 132px 108px;
+    grid-template-columns: 1fr 1fr 132px 132px;
     align-items: end;
     gap: 18px;
     margin-top: 18px;
@@ -210,27 +386,25 @@ input[type="range"] {
     accent-color: var(--cyan);
 }
 
-button {
-    height: 46px;
-    cursor: pointer;
-    border-radius: 999px;
-    background: var(--cyan);
-    color: #04101f;
+.result-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 24px 0;
+}
+
+.stat-card {
+    padding: 18px;
+}
+
+.stat-card small {
+    color: var(--muted);
     font-weight: 900;
-    transition: transform 0.16s ease, filter 0.16s ease, opacity 0.16s ease;
 }
 
-button:hover:not(:disabled) {
-    transform: translateY(-1px);
-    filter: brightness(1.08);
-}
-
-button:disabled {
-    cursor: not-allowed;
-    opacity: 0.42;
-}
-
-button.ghost {
-    background: #1e293b;
-    color: #fff;
+.stat-card strong {
+    display: block;
+    margin-top: 10px;
+    color: #72ddff;
+    font-size: 28px;
 }

@@ -13,32 +13,69 @@
         <div>
             <p class="eyebrow">PROJECTS / GAMES</p>
             <h1>Artillery Demo</h1>
-            <p class="build-label">Build 001</p>
+            <p class="build-label">Build 002</p>
         </div>
-        <p class="game-desc">一个纯 Canvas 的 2D 抛物线炮击小游戏 Demo。</p>
+        <p class="game-desc">单机模拟多人房间炮击小游戏原型。</p>
     </header>
 
-    <section class="game-panel">
+    <section id="menuScreen" class="screen game-panel">
+        <p class="screen-kicker">MAIN MENU</p>
+        <h2>假多人房间 Demo</h2>
+        <p class="screen-copy">创建房间，选择地图，添加 AI，开始一局 5 人以内的蓝红队炮击战。</p>
+        <button id="createRoomButton" type="button">创建房间</button>
+    </section>
+
+    <section id="mapScreen" class="screen game-panel hidden">
+        <p class="screen-kicker">MAP SELECT</p>
+        <h2>选择地图</h2>
+        <div id="mapList" class="map-grid"></div>
+    </section>
+
+    <section id="roomScreen" class="screen game-panel hidden">
+        <div class="room-head">
+            <div>
+                <p class="screen-kicker">ROOM</p>
+                <h2 id="roomNameText">Artillery Room</h2>
+            </div>
+            <div class="room-actions">
+                <button id="autoFillButton" type="button" class="ghost">自动填充 AI</button>
+                <button id="readyButton" type="button">玩家准备</button>
+                <button id="startGameButton" type="button">开始游戏</button>
+            </div>
+        </div>
+
+        <div class="room-meta">
+            <span id="selectedMapText">地图：-</span>
+            <span id="roomHintText">添加 AI 后开始游戏。</span>
+        </div>
+
+        <div class="team-board">
+            <div class="team-column blue">
+                <h3>蓝方队伍</h3>
+                <div id="blueTeamList" class="slot-list"></div>
+            </div>
+            <div class="team-column red">
+                <h3>红方队伍</h3>
+                <div id="redTeamList" class="slot-list"></div>
+            </div>
+        </div>
+    </section>
+
+    <section id="battleScreen" class="screen game-panel hidden">
         <div class="status-row">
-            <div class="fighter-status">
-                <span>玩家</span>
-                <div class="hp-bar">
-                    <div id="playerHpBar" class="hp-fill"></div>
-                </div>
-                <strong id="playerHpText">100 HP</strong>
+            <div class="team-status">
+                <span>蓝方</span>
+                <strong id="blueTeamHpText">0 HP</strong>
             </div>
 
             <div class="turn-status">
-                <span id="turnText">玩家回合</span>
+                <span id="turnText">准备中</span>
                 <small id="windText">风向 0</small>
             </div>
 
-            <div class="fighter-status right">
-                <span>敌人</span>
-                <div class="hp-bar">
-                    <div id="enemyHpBar" class="hp-fill enemy"></div>
-                </div>
-                <strong id="enemyHpText">100 HP</strong>
+            <div class="team-status red">
+                <span>红方</span>
+                <strong id="redTeamHpText">0 HP</strong>
             </div>
         </div>
 
@@ -56,7 +93,17 @@
             </label>
 
             <button id="fireButton" type="button">发射</button>
-            <button id="resetButton" type="button" class="ghost">重开</button>
+            <button id="backToRoomButton" type="button" class="ghost">返回房间</button>
+        </div>
+    </section>
+
+    <section id="resultScreen" class="screen game-panel hidden">
+        <p class="screen-kicker">RESULT</p>
+        <h2 id="resultTitle">战斗结束</h2>
+        <div id="resultStats" class="result-stats"></div>
+        <div class="result-actions">
+            <button id="playAgainButton" type="button">再来一局</button>
+            <button id="returnRoomButton" type="button" class="ghost">返回房间</button>
         </div>
     </section>
 </main>

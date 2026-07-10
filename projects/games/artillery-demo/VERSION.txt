@@ -1,11 +1,16 @@
 Artillery Demo
 
-Build: 001
+Build: 002
 
 Features:
 - projectile physics
 - explosion damage
 - terrain destruction
+- room system
+- fake multiplayer
+- AI players
+- ready system
+- result screen
 
 Date:
 2026-07-11
