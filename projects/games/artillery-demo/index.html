@@ -8,103 +8,122 @@
 </head>
 <body>
 <main class="game-shell">
-    <header class="game-header">
-        <a class="back-link" href="../../../index.html">← Fill Space</a>
-        <div>
-            <p class="eyebrow">PROJECTS / GAMES</p>
-            <h1>Artillery Demo</h1>
-            <p class="build-label">Build 002</p>
-        </div>
-        <p class="game-desc">单机模拟多人房间炮击小游戏原型。</p>
-    </header>
-
-    <section id="menuScreen" class="screen game-panel">
-        <p class="screen-kicker">MAIN MENU</p>
-        <h2>假多人房间 Demo</h2>
-        <p class="screen-copy">创建房间，选择地图，添加 AI，开始一局 5 人以内的蓝红队炮击战。</p>
-        <button id="createRoomButton" type="button">创建房间</button>
-    </section>
-
-    <section id="mapScreen" class="screen game-panel hidden">
-        <p class="screen-kicker">MAP SELECT</p>
-        <h2>选择地图</h2>
-        <div id="mapList" class="map-grid"></div>
-    </section>
-
-    <section id="roomScreen" class="screen game-panel hidden">
-        <div class="room-head">
+    <section class="game-container">
+        <header class="game-topbar">
             <div>
-                <p class="screen-kicker">ROOM</p>
-                <h2 id="roomNameText">Artillery Room</h2>
+                <p class="eyebrow">PROJECTS / GAMES</p>
+                <h1>Artillery Demo</h1>
+                <p class="build-label">Build 003</p>
             </div>
-            <div class="room-actions">
-                <button id="autoFillButton" type="button" class="ghost">自动填充 AI</button>
-                <button id="readyButton" type="button">玩家准备</button>
-                <button id="startGameButton" type="button">开始游戏</button>
-            </div>
+            <a id="spaceReturnLink" class="top-return" href="../../../index.html">返回 Personal Space</a>
+        </header>
+
+        <div class="game-content">
+            <section id="menuScreen" class="screen">
+                <p class="screen-kicker">GAME MENU</p>
+                <h2>独立游戏模块</h2>
+                <p class="screen-copy">单机模拟多人房间炮击原型。所有界面都在游戏容器内切换。</p>
+                <div class="menu-actions">
+                    <button id="quickStartButton" type="button">开始游戏</button>
+                    <button id="createRoomButton" type="button">创建房间</button>
+                    <button id="settingsButton" type="button" class="ghost">设置</button>
+                    <a class="button-link ghost" href="../../../index.html">返回 Personal Space</a>
+                </div>
+            </section>
+
+            <section id="settingsScreen" class="screen hidden">
+                <p class="screen-kicker">SETTINGS</p>
+                <h2>设置</h2>
+                <p class="screen-copy">当前 Demo 暂无可调设置。后续可在这里加入音量、操作方式和规则选项。</p>
+                <button id="settingsBackButton" type="button" class="ghost">返回菜单</button>
+            </section>
+
+            <section id="mapScreen" class="screen hidden">
+                <p class="screen-kicker">MAP_SELECT</p>
+                <h2>选择地图</h2>
+                <div id="mapList" class="map-grid"></div>
+            </section>
+
+            <section id="roomScreen" class="screen hidden">
+                <div class="room-head">
+                    <div>
+                        <p class="screen-kicker">ROOM</p>
+                        <h2 id="roomNameText">Artillery Room</h2>
+                    </div>
+                    <div class="room-actions">
+                        <button id="changeMapButton" type="button" class="ghost">选择地图</button>
+                        <button id="autoFillButton" type="button" class="ghost">自动填充 AI</button>
+                        <button id="startGameButton" type="button">开始游戏</button>
+                        <button id="roomBackButton" type="button" class="ghost">返回菜单</button>
+                    </div>
+                </div>
+
+                <div class="room-meta">
+                    <span id="selectedMapText">地图：-</span>
+                    <span id="roomHintText">添加 AI 并准备后开始游戏。</span>
+                </div>
+
+                <div class="team-board">
+                    <div class="team-column blue">
+                        <h3>蓝方队伍</h3>
+                        <div id="blueTeamList" class="slot-list"></div>
+                    </div>
+                    <div class="team-column red">
+                        <h3>红方队伍</h3>
+                        <div id="redTeamList" class="slot-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="battleScreen" class="screen hidden">
+                <div class="status-row">
+                    <div class="team-status">
+                        <span>蓝方</span>
+                        <strong id="blueTeamHpText">0 HP</strong>
+                    </div>
+
+                    <div class="turn-status">
+                        <span id="turnText">准备中</span>
+                        <small id="windText">风向 0</small>
+                    </div>
+
+                    <div class="team-status red">
+                        <span>红方</span>
+                        <strong id="redTeamHpText">0 HP</strong>
+                    </div>
+                </div>
+
+                <canvas id="gameCanvas" width="960" height="540" aria-label="Artillery Demo game canvas"></canvas>
+            </section>
+
+            <section id="resultScreen" class="screen hidden">
+                <p class="screen-kicker">RESULT</p>
+                <h2 id="resultTitle">战斗结束</h2>
+                <div id="resultStats" class="result-stats"></div>
+                <div class="result-actions">
+                    <button id="playAgainButton" type="button">再来一局</button>
+                    <button id="returnRoomButton" type="button" class="ghost">返回房间</button>
+                </div>
+            </section>
         </div>
 
-        <div class="room-meta">
-            <span id="selectedMapText">地图：-</span>
-            <span id="roomHintText">添加 AI 后开始游戏。</span>
-        </div>
+        <footer class="game-actions">
+            <div id="battleControls" class="control-panel hidden">
+                <label>
+                    <span>角度 <strong id="angleValue">45°</strong></span>
+                    <input id="angleInput" type="range" min="10" max="80" value="45">
+                </label>
 
-        <div class="team-board">
-            <div class="team-column blue">
-                <h3>蓝方队伍</h3>
-                <div id="blueTeamList" class="slot-list"></div>
+                <label>
+                    <span>力度 <strong id="powerValue">62</strong></span>
+                    <input id="powerInput" type="range" min="25" max="95" value="62">
+                </label>
+
+                <button id="fireButton" type="button">发射</button>
+                <button id="battleRoomButton" type="button" class="ghost">返回房间</button>
             </div>
-            <div class="team-column red">
-                <h3>红方队伍</h3>
-                <div id="redTeamList" class="slot-list"></div>
-            </div>
-        </div>
-    </section>
-
-    <section id="battleScreen" class="screen game-panel hidden">
-        <div class="status-row">
-            <div class="team-status">
-                <span>蓝方</span>
-                <strong id="blueTeamHpText">0 HP</strong>
-            </div>
-
-            <div class="turn-status">
-                <span id="turnText">准备中</span>
-                <small id="windText">风向 0</small>
-            </div>
-
-            <div class="team-status red">
-                <span>红方</span>
-                <strong id="redTeamHpText">0 HP</strong>
-            </div>
-        </div>
-
-        <canvas id="gameCanvas" width="960" height="540" aria-label="Artillery Demo game canvas"></canvas>
-
-        <div class="control-panel">
-            <label>
-                <span>角度 <strong id="angleValue">45°</strong></span>
-                <input id="angleInput" type="range" min="10" max="80" value="45">
-            </label>
-
-            <label>
-                <span>力度 <strong id="powerValue">62</strong></span>
-                <input id="powerInput" type="range" min="25" max="95" value="62">
-            </label>
-
-            <button id="fireButton" type="button">发射</button>
-            <button id="backToRoomButton" type="button" class="ghost">返回房间</button>
-        </div>
-    </section>
-
-    <section id="resultScreen" class="screen game-panel hidden">
-        <p class="screen-kicker">RESULT</p>
-        <h2 id="resultTitle">战斗结束</h2>
-        <div id="resultStats" class="result-stats"></div>
-        <div class="result-actions">
-            <button id="playAgainButton" type="button">再来一局</button>
-            <button id="returnRoomButton" type="button" class="ghost">返回房间</button>
-        </div>
+            <p id="footerHint" class="footer-hint">GAME MENU</p>
+        </footer>
     </section>
 </main>
 

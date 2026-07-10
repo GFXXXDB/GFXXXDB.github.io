@@ -1,12 +1,23 @@
 (() => {
     const $ = id => document.getElementById(id);
+    const GAME_STATE = {
+        GAME_MENU: "GAME_MENU",
+        ROOM: "ROOM",
+        MAP_SELECT: "MAP_SELECT",
+        READY: "READY",
+        BATTLE: "BATTLE",
+        RESULT: "RESULT",
+        SETTINGS: "SETTINGS"
+    };
 
     const screens = {
-        menu: $("menuScreen"),
-        map: $("mapScreen"),
-        room: $("roomScreen"),
-        battle: $("battleScreen"),
-        result: $("resultScreen")
+        [GAME_STATE.GAME_MENU]: $("menuScreen"),
+        [GAME_STATE.MAP_SELECT]: $("mapScreen"),
+        [GAME_STATE.ROOM]: $("roomScreen"),
+        [GAME_STATE.READY]: $("roomScreen"),
+        [GAME_STATE.BATTLE]: $("battleScreen"),
+        [GAME_STATE.RESULT]: $("resultScreen"),
+        [GAME_STATE.SETTINGS]: $("settingsScreen")
     };
 
     const canvas = $("gameCanvas");
@@ -18,6 +29,8 @@
     const fireButton = $("fireButton");
     const turnText = $("turnText");
     const windText = $("windText");
+    const battleControls = $("battleControls");
+    const footerHint = $("footerHint");
 
     const maps = [
         { id: "plain", name: "地图1：碎石平原", preview: "", seed: 0.012, valley: 42, base: 405 },
@@ -40,8 +53,10 @@
     };
 
     const state = {
+        screen: GAME_STATE.GAME_MENU,
         selectedMap: maps[0],
         slots: [],
+        aiSerial: 1,
         fighters: [],
         currentTeam: "blue",
         teamCursor: { blue: -1, red: -1 },
@@ -49,7 +64,7 @@
         projectile: null,
         trail: [],
         blast: null,
-        message: "创建房间开始游戏。",
+        message: "GAME MENU",
         gameOver: false,
         lastTime: 0,
         stats: {
@@ -58,19 +73,28 @@
         }
     };
 
-    function showScreen(name) {
-        Object.values(screens).forEach(screen => screen.classList.add("hidden"));
-        screens[name].classList.remove("hidden");
+    function setScreen(screen) {
+        state.screen = screen;
+        const activeElement = screens[screen];
+        [...new Set(Object.values(screens))].forEach(element => {
+            element.classList.toggle("hidden", element !== activeElement);
+        });
+        battleControls.classList.toggle("hidden", screen !== GAME_STATE.BATTLE);
+        footerHint.classList.toggle("hidden", screen === GAME_STATE.BATTLE);
+        footerHint.textContent = screen;
     }
 
-    function createDefaultSlots() {
+    function createRoom() {
         state.slots = [
-            { id: 1, team: "blue", name: "Player", type: "player", ready: false },
-            { id: 2, team: "blue", name: "", type: "empty", ready: false },
-            { id: 3, team: "red", name: "", type: "empty", ready: false },
-            { id: 4, team: "red", name: "", type: "empty", ready: false },
-            { id: 5, team: "red", name: "", type: "empty", ready: false }
+            { id: 1, label: "Slot 1", team: "blue", name: "Player", type: "player", ready: false },
+            { id: 2, label: "Slot 2", team: "blue", name: "", type: "empty", ready: false },
+            { id: 3, label: "Slot 3", team: "blue", name: "", type: "empty", ready: false },
+            { id: 4, label: "Slot 4", team: "red", name: "", type: "empty", ready: false },
+            { id: 5, label: "Slot 5", team: "red", name: "", type: "empty", ready: false }
         ];
+        state.aiSerial = 1;
+        renderRoom();
+        setScreen(GAME_STATE.ROOM);
     }
 
     function renderMaps() {
@@ -85,9 +109,8 @@
         document.querySelectorAll("[data-map]").forEach(button => {
             button.addEventListener("click", () => {
                 state.selectedMap = maps.find(map => map.id === button.dataset.map);
-                createDefaultSlots();
                 renderRoom();
-                showScreen("room");
+                setScreen(GAME_STATE.ROOM);
             });
         });
     }
@@ -95,21 +118,19 @@
     function renderRoom() {
         $("roomNameText").textContent = "Artillery Room";
         $("selectedMapText").textContent = `地图：${state.selectedMap.name}`;
-
         renderTeam("blue", $("blueTeamList"));
         renderTeam("red", $("redTeamList"));
 
         const filled = state.slots.filter(slot => slot.type !== "empty");
-        const emptyCount = state.slots.length - filled.length;
         const allReady = filled.length > 0 && filled.every(slot => slot.ready);
         const hasBlue = filled.some(slot => slot.team === "blue");
         const hasRed = filled.some(slot => slot.team === "red");
+        const canStart = allReady && hasBlue && hasRed;
 
-        $("roomHintText").textContent = emptyCount > 0
-            ? `还有 ${emptyCount} 个空位，可自动填充 AI。`
-            : allReady ? "所有位置已准备，可以开始游戏。" : "还有角色未准备。";
-
-        $("startGameButton").disabled = emptyCount > 0 || !allReady || !hasBlue || !hasRed;
+        $("roomHintText").textContent = canStart
+            ? "所有角色已准备，可以开始游戏。"
+            : "每个角色都需要准备；至少需要蓝方和红方各一名角色。";
+        $("startGameButton").disabled = !canStart;
     }
 
     function renderTeam(team, container) {
@@ -119,21 +140,25 @@
                 if (slot.type === "empty") {
                     return `
                         <div class="slot-card">
-                            <div><strong>空位置</strong><small>${team === "blue" ? "蓝方" : "红方"}</small></div>
+                            <div><strong>${slot.label} 空位</strong><small>${team === "blue" ? "蓝方" : "红方"}</small></div>
                             <button type="button" data-add-ai="${slot.id}">添加AI</button>
                         </div>
                     `;
                 }
 
                 const typeText = slot.type === "player" ? "玩家" : "AI";
-                const action = slot.type === "ai"
-                    ? `<button type="button" class="ghost" data-remove-ai="${slot.id}">移除</button>`
+                const removeButton = slot.type === "ai"
+                    ? `<button type="button" class="ghost" data-remove-ai="${slot.id}">删除</button>`
                     : "";
 
                 return `
                     <div class="slot-card">
-                        <div><strong>${slot.name}</strong><small>${typeText} / ${slot.ready ? "已准备" : "准备中"}</small></div>
-                        ${action}
+                        <div>
+                            <strong>${slot.label} ${slot.name}</strong>
+                            <small>${typeText} / ${slot.ready ? "已准备" : "未准备"}</small>
+                        </div>
+                        <button type="button" data-toggle-ready="${slot.id}">${slot.ready ? "取消准备" : "准备"}</button>
+                        ${removeButton}
                     </div>
                 `;
             })
@@ -142,9 +167,11 @@
         container.querySelectorAll("[data-add-ai]").forEach(button => {
             button.addEventListener("click", () => addAi(Number(button.dataset.addAi)));
         });
-
         container.querySelectorAll("[data-remove-ai]").forEach(button => {
             button.addEventListener("click", () => removeAi(Number(button.dataset.removeAi)));
+        });
+        container.querySelectorAll("[data-toggle-ready]").forEach(button => {
+            button.addEventListener("click", () => toggleReady(Number(button.dataset.toggleReady)));
         });
     }
 
@@ -152,8 +179,9 @@
         const slot = state.slots.find(item => item.id === slotId);
         if (!slot || slot.type !== "empty") return;
         slot.type = "ai";
-        slot.name = `AI-${String(slot.id).padStart(2, "0")}`;
-        slot.ready = true;
+        slot.name = `AI-${String(state.aiSerial).padStart(2, "0")}`;
+        slot.ready = false;
+        state.aiSerial += 1;
         renderRoom();
     }
 
@@ -166,20 +194,23 @@
         renderRoom();
     }
 
+    function toggleReady(slotId) {
+        const slot = state.slots.find(item => item.id === slotId);
+        if (!slot || slot.type === "empty") return;
+        slot.ready = !slot.ready;
+        setScreen(GAME_STATE.READY);
+        renderRoom();
+    }
+
     function autoFillAi() {
         state.slots.forEach(slot => {
             if (slot.type === "empty") {
                 slot.type = "ai";
-                slot.name = `AI-${String(slot.id).padStart(2, "0")}`;
-                slot.ready = true;
+                slot.name = `AI-${String(state.aiSerial).padStart(2, "0")}`;
+                slot.ready = false;
+                state.aiSerial += 1;
             }
         });
-        renderRoom();
-    }
-
-    function setPlayerReady() {
-        const playerSlot = state.slots.find(slot => slot.type === "player");
-        playerSlot.ready = true;
         renderRoom();
     }
 
@@ -213,7 +244,6 @@
             y: 0,
             vy: 0,
             hp: 100,
-            maxHp: 100,
             color: isBlue ? "#72ddff" : "#f87171",
             facing: isBlue ? 1 : -1,
             bodyRadius: 20,
@@ -230,7 +260,6 @@
         state.fighters = state.slots
             .filter(slot => slot.type !== "empty")
             .map((slot, index) => createFighter(slot, index, teamCounts[slot.team]++));
-
         state.fighters.forEach(placeOnGround);
         state.currentTeam = "blue";
         state.teamCursor = { blue: -1, red: -1 };
@@ -240,7 +269,7 @@
         state.gameOver = false;
         state.stats = { playerDamage: 0, playerKills: 0 };
         randomizeWind();
-        showScreen("battle");
+        setScreen(GAME_STATE.BATTLE);
         nextTurn("blue");
     }
 
@@ -278,19 +307,12 @@
             finishBattle(winner);
             return;
         }
-
         const alive = aliveTeam(team);
-        if (alive.length === 0) {
-            nextTurn(team === "blue" ? "red" : "blue");
-            return;
-        }
-
         state.currentTeam = team;
         state.teamCursor[team] = (state.teamCursor[team] + 1) % alive.length;
         state.activeFighter = alive[state.teamCursor[team]];
         state.message = `${state.activeFighter.name} 行动。`;
         syncBattleUi();
-
         if (state.activeFighter.type === "ai") {
             setTimeout(aiFire, 650);
         }
@@ -304,10 +326,8 @@
     function syncBattleUi() {
         angleValue.textContent = `${angleInput.value}°`;
         powerValue.textContent = powerInput.value;
-        const blueHp = aliveTeam("blue").reduce((sum, fighter) => sum + fighter.hp, 0);
-        const redHp = aliveTeam("red").reduce((sum, fighter) => sum + fighter.hp, 0);
-        $("blueTeamHpText").textContent = `${blueHp} HP`;
-        $("redTeamHpText").textContent = `${redHp} HP`;
+        $("blueTeamHpText").textContent = `${aliveTeam("blue").reduce((sum, fighter) => sum + fighter.hp, 0)} HP`;
+        $("redTeamHpText").textContent = `${aliveTeam("red").reduce((sum, fighter) => sum + fighter.hp, 0)} HP`;
         turnText.textContent = state.projectile ? "炮弹飞行中" : `${state.activeFighter?.name ?? "-"} 回合`;
         fireButton.disabled = !state.activeFighter || state.activeFighter.type !== "player" || !!state.projectile || state.gameOver;
     }
@@ -339,10 +359,8 @@
         const targets = aliveTeam(shooter.team === "blue" ? "red" : "blue");
         const target = targets[Math.floor(Math.random() * targets.length)];
         const distance = Math.abs(target.x - shooter.x);
-        const windCorrection = world.wind * 0.25 * shooter.facing;
-        const heightCorrection = (shooter.y - target.y) * 0.04;
         const angle = 36 + Math.random() * 14;
-        const power = Math.min(95, Math.max(42, distance / 12.2 + windCorrection + heightCorrection + (Math.random() * 12 - 6)));
+        const power = Math.min(95, Math.max(42, distance / 12.2 + world.wind * 0.25 * shooter.facing + (Math.random() * 12 - 6)));
         fireShot(shooter, angle, power);
     }
 
@@ -362,9 +380,7 @@
         for (let tx = Math.max(0, Math.floor(x - radius)); tx <= Math.min(world.width, Math.ceil(x + radius)); tx += 1) {
             const dx = tx - x;
             const bottom = y + Math.sqrt(Math.max(0, radius * radius - dx * dx));
-            if (bottom > terrainY(tx)) {
-                world.terrain[tx] = Math.min(world.height, bottom);
-            }
+            if (bottom > terrainY(tx)) world.terrain[tx] = Math.min(world.height, bottom);
         }
     }
 
@@ -375,8 +391,7 @@
             const distance = distanceToFighter(x, y, fighter);
             if (distance > explosion.radius) return;
             const oldHp = fighter.hp;
-            const falloff = 1 - distance / explosion.radius;
-            const damage = Math.max(explosion.minDamage, Math.round(explosion.maxDamage * falloff));
+            const damage = Math.max(explosion.minDamage, Math.round(explosion.maxDamage * (1 - distance / explosion.radius)));
             fighter.hp = Math.max(0, fighter.hp - damage);
             shooter.totalDamage += oldHp - fighter.hp;
             if (shooter.type === "player") state.stats.playerDamage += oldHp - fighter.hp;
@@ -386,7 +401,6 @@
             }
             damaged.push(`${fighter.name}-${oldHp - fighter.hp}`);
         });
-
         destroyTerrain(x, y, explosion.radius);
         state.blast = { x, y, radius: explosion.radius, ttl: 0.28 };
         state.message = damaged.length ? `爆炸伤害：${damaged.join("，")}` : "爆炸未命中单位。";
@@ -398,13 +412,11 @@
         state.trail = [];
         randomizeWind();
         syncBattleUi();
-
         const winner = getWinner();
         if (winner) {
             finishBattle(winner);
             return;
         }
-
         setTimeout(() => nextTurn(state.currentTeam === "blue" ? "red" : "blue"), 600);
     }
 
@@ -418,18 +430,15 @@
         projectile.y += projectile.vy * dt;
         state.trail.push({ x: projectile.x, y: projectile.y });
         if (state.trail.length > 48) state.trail.shift();
-
         if (projectileHitFighter(projectile)) {
             explodeAt(projectile.x, projectile.y, projectile.shooter);
             return;
         }
-
         const inWorld = projectile.x >= 0 && projectile.x <= world.width;
         if (inWorld && projectile.y + projectile.radius >= terrainY(projectile.x)) {
             explodeAt(projectile.x, terrainY(projectile.x), projectile.shooter);
             return;
         }
-
         if (projectile.x < -60 || projectile.x > world.width + 60 || projectile.y > world.height + 80 || projectile.flightTime > 8) {
             state.message = "炮弹飞出战场。";
             endAction();
@@ -439,25 +448,22 @@
     function finishBattle(winner) {
         state.gameOver = true;
         state.projectile = null;
-        const playerWon = winner === "blue";
-        $("resultTitle").textContent = playerWon ? "胜利" : "失败";
+        $("resultTitle").textContent = winner === "blue" ? "胜利" : "失败";
         const remainingHp = aliveTeam(winner).reduce((sum, fighter) => sum + fighter.hp, 0);
         $("resultStats").innerHTML = `
             <div class="stat-card"><small>总伤害</small><strong>${state.stats.playerDamage}</strong></div>
             <div class="stat-card"><small>击杀数</small><strong>${state.stats.playerKills}</strong></div>
             <div class="stat-card"><small>胜方剩余HP</small><strong>${remainingHp}</strong></div>
         `;
-        showScreen("result");
+        setScreen(GAME_STATE.RESULT);
     }
 
-    function replay() {
+    function resetReadyForRematch() {
         state.slots.forEach(slot => {
-            if (slot.type !== "empty") slot.ready = slot.type === "ai";
+            if (slot.type !== "empty") slot.ready = false;
         });
-        const playerSlot = state.slots.find(slot => slot.type === "player");
-        if (playerSlot) playerSlot.ready = false;
         renderRoom();
-        showScreen("room");
+        setScreen(GAME_STATE.READY);
     }
 
     function drawSky() {
@@ -583,7 +589,7 @@
     function frame(time) {
         const dt = Math.min(0.033, (time - state.lastTime) / 1000 || 0);
         state.lastTime = time;
-        if (!screens.battle.classList.contains("hidden")) {
+        if (state.screen === GAME_STATE.BATTLE) {
             state.fighters.forEach(fighter => updateFighterPhysics(fighter, dt));
             updateProjectile(dt);
             syncBattleUi();
@@ -598,26 +604,33 @@
         requestAnimationFrame(frame);
     }
 
-    $("createRoomButton").addEventListener("click", () => {
+    $("quickStartButton").addEventListener("click", () => {
+        createRoom();
+        autoFillAi();
+    });
+    $("createRoomButton").addEventListener("click", createRoom);
+    $("settingsButton").addEventListener("click", () => setScreen(GAME_STATE.SETTINGS));
+    $("settingsBackButton").addEventListener("click", () => setScreen(GAME_STATE.GAME_MENU));
+    $("changeMapButton").addEventListener("click", () => {
         renderMaps();
-        showScreen("map");
+        setScreen(GAME_STATE.MAP_SELECT);
     });
+    $("roomBackButton").addEventListener("click", () => setScreen(GAME_STATE.GAME_MENU));
     $("autoFillButton").addEventListener("click", autoFillAi);
-    $("readyButton").addEventListener("click", setPlayerReady);
     $("startGameButton").addEventListener("click", startBattle);
-    $("backToRoomButton").addEventListener("click", () => {
+    $("battleRoomButton").addEventListener("click", () => {
+        state.projectile = null;
         renderRoom();
-        showScreen("room");
+        setScreen(GAME_STATE.ROOM);
     });
-    $("playAgainButton").addEventListener("click", replay);
-    $("returnRoomButton").addEventListener("click", replay);
+    $("playAgainButton").addEventListener("click", resetReadyForRematch);
+    $("returnRoomButton").addEventListener("click", resetReadyForRematch);
     angleInput.addEventListener("input", syncBattleUi);
     powerInput.addEventListener("input", syncBattleUi);
     fireButton.addEventListener("click", playerFire);
 
-    createDefaultSlots();
     renderMaps();
-    renderRoom();
-    showScreen("menu");
+    createRoom();
+    setScreen(GAME_STATE.GAME_MENU);
     requestAnimationFrame(frame);
 })();

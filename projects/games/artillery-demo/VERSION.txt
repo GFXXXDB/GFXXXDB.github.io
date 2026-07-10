@@ -1,6 +1,6 @@
 Artillery Demo
 
-Build: 002
+Build: 003
 
 Features:
 - projectile physics
@@ -11,6 +11,10 @@ Features:
 - AI players
 - ready system
 - result screen
+- standalone game container
+- room navigation
+- ready toggle
+- improved team slots
 
 Date:
 2026-07-11

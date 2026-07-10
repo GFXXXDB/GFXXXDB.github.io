@@ -1,13 +1,11 @@
 :root {
     --bg: #050914;
     --panel: #101827;
-    --panel-dark: #081020;
     --text: #eaf2ff;
     --muted: #a8bad3;
     --cyan: #38c9ff;
     --cyan-soft: rgba(56, 201, 255, 0.16);
     --cyan-line: rgba(56, 201, 255, 0.42);
-    --danger: #ef4444;
     --red: #f87171;
     --border: rgba(148, 163, 184, 0.22);
     --radius: 14px;
@@ -40,22 +38,30 @@ a {
 }
 
 button,
-input {
+input,
+.button-link {
     font: inherit;
 }
 
-button {
+button,
+.button-link {
     height: 46px;
+    min-width: 132px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     border: 0;
     border-radius: 999px;
+    padding: 0 22px;
     background: var(--cyan);
     color: #04101f;
     font-weight: 900;
     transition: transform 0.16s ease, filter 0.16s ease, opacity 0.16s ease;
 }
 
-button:hover:not(:disabled) {
+button:hover:not(:disabled),
+.button-link:hover {
     transform: translateY(-1px);
     filter: brightness(1.08);
 }
@@ -65,7 +71,8 @@ button:disabled {
     opacity: 0.42;
 }
 
-button.ghost {
+button.ghost,
+.button-link.ghost {
     background: #1e293b;
     color: #fff;
 }
@@ -77,20 +84,33 @@ button.ghost {
 .game-shell {
     width: min(1180px, calc(100% - 64px));
     margin-inline: auto;
-    padding: 48px 0 72px;
+    padding: 36px 0;
 }
 
-.game-header {
+.game-container {
+    min-height: calc(100vh - 72px);
     display: grid;
-    grid-template-columns: 180px 1fr 320px;
-    align-items: end;
-    gap: 28px;
-    margin-bottom: 28px;
+    grid-template-rows: auto 1fr auto;
+    overflow: hidden;
+    border-radius: 18px;
+    border: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(18, 29, 49, 0.96), rgba(9, 15, 28, 0.96));
+    box-shadow: var(--shadow);
 }
 
-.back-link {
+.game-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 24px;
+    padding: 24px 28px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(3, 7, 18, 0.32);
+}
+
+.top-return {
     color: #72ddff;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 900;
 }
 
@@ -98,7 +118,7 @@ button.ghost {
 .screen-kicker {
     margin: 0;
     color: #72ddff;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 900;
     letter-spacing: 0.28em;
 }
@@ -110,8 +130,8 @@ h3 {
 }
 
 h1 {
-    margin: 12px 0 0;
-    font-size: 54px;
+    margin: 10px 0 0;
+    font-size: 46px;
     line-height: 1;
 }
 
@@ -128,7 +148,7 @@ h3 {
 
 .build-label {
     display: inline-block;
-    margin: 14px 0 0;
+    margin: 12px 0 0;
     padding: 6px 12px;
     border: 1px solid var(--cyan-line);
     border-radius: 999px;
@@ -139,31 +159,33 @@ h3 {
     letter-spacing: 0.16em;
 }
 
-.game-desc,
-.screen-copy {
+.game-content {
+    min-height: 560px;
+    padding: 24px 28px;
+}
+
+.screen {
+    min-height: 100%;
+}
+
+.screen-copy,
+.footer-hint {
     margin: 0;
     color: var(--muted);
     font-size: 16px;
     line-height: 1.7;
 }
 
-.game-panel {
-    padding: 22px;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    background: linear-gradient(180deg, rgba(18, 29, 49, 0.96), rgba(9, 15, 28, 0.96));
-    box-shadow: var(--shadow);
+.menu-actions,
+.room-actions,
+.result-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
-.screen > button,
-.result-actions button,
-.room-actions button {
-    min-width: 132px;
-    padding: 0 22px;
-}
-
-#menuScreen button {
-    margin-top: 26px;
+.menu-actions {
+    margin-top: 28px;
 }
 
 .map-grid {
@@ -184,7 +206,6 @@ h3 {
 .map-card {
     height: auto;
     padding: 16px;
-    cursor: pointer;
     color: inherit;
     text-align: left;
 }
@@ -241,12 +262,8 @@ h3 {
     align-items: start;
 }
 
-.room-actions,
-.result-actions {
-    display: flex;
-    flex-wrap: wrap;
+.room-actions {
     justify-content: flex-end;
-    gap: 12px;
 }
 
 .room-meta {
@@ -283,10 +300,10 @@ h3 {
 
 .slot-card {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto;
     align-items: center;
-    gap: 12px;
-    min-height: 74px;
+    gap: 10px;
+    min-height: 76px;
     padding: 14px;
 }
 
@@ -301,9 +318,9 @@ h3 {
 }
 
 .slot-card button {
-    min-width: 94px;
+    min-width: 86px;
     height: 36px;
-    padding: 0 14px;
+    padding: 0 12px;
     font-size: 13px;
 }
 
@@ -353,16 +370,17 @@ h3 {
     background: #050914;
 }
 
+.game-actions {
+    padding: 18px 28px;
+    border-top: 1px solid var(--border);
+    background: rgba(3, 7, 18, 0.32);
+}
+
 .control-panel {
     display: grid;
     grid-template-columns: 1fr 1fr 132px 132px;
     align-items: end;
     gap: 18px;
-    margin-top: 18px;
-    padding: 18px;
-    border-radius: var(--radius);
-    background: rgba(3, 7, 18, 0.58);
-    border: 1px solid var(--border);
 }
 
 label {
