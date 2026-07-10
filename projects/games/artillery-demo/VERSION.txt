@@ -1,24 +1,16 @@
 Artillery Demo
 
-Build: 004
+Build: 005
 
 Features:
-- projectile physics
-- explosion damage
-- terrain destruction
-- room system
-- fake multiplayer
-- AI players
-- ready system
-- result screen
-- standalone game container
-- room navigation
-- ready toggle
-- improved team slots
-- 16:9 game window
-- fixed HUD content action layout
-- topbar return state logic
-- game-style menu layout
+- fixed 1280x720 logical canvas
+- non-stretched 16:9 scaling
+- modular JavaScript architecture
+- 5v5 room framework
+- AI difficulty levels
+- turn timer
+- hit rate result stats
+- stable game window layout
 
 Date:
 2026-07-11
