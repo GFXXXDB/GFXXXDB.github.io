@@ -82,6 +82,19 @@ h1 {
     letter-spacing: -0.05em;
 }
 
+.build-label {
+    display: inline-block;
+    margin: 14px 0 0;
+    padding: 6px 12px;
+    border: 1px solid var(--cyan-line);
+    border-radius: 999px;
+    background: var(--cyan-soft);
+    color: #72ddff;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+}
+
 .game-desc {
     margin: 0;
     color: var(--muted);
