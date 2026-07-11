@@ -1,16 +1,16 @@
 Artillery Demo
 
-Build: 005
+Build: 008
 
 Features:
-- fixed 1280x720 logical canvas
-- non-stretched 16:9 scaling
-- modular JavaScript architecture
-- 5v5 room framework
-- AI difficulty levels
-- turn timer
-- hit rate result stats
-- stable game window layout
+- game-client style 16:9 window
+- redesigned battle HUD
+- dynamic blue/red character lists
+- room UI cleanup
+- ready toggle preserved
+- in-game system menu
+- weapon and skill UI placeholders
+- result screen UI refinement
 
 Date:
 2026-07-11

@@ -21,6 +21,7 @@ export class ArtilleryGame {
             slots: createInitialSlots(),
             aiSerial: 1,
             fighters: [],
+            turnRound: 0,
             currentTeam: TEAMS.BLUE,
             teamCursor: { blue: -1, red: -1 },
             activeFighter: null,
@@ -96,6 +97,12 @@ export class ArtilleryGame {
         this.ui.renderRoom();
     }
 
+    addAiToTeam(team) {
+        const slot = this.state.slots.find(item => item.team === team && item.type === "empty");
+        if (!slot) return;
+        this.addAi(slot.id);
+    }
+
     removeAi(slotId) {
         removeAi(this.state.slots, slotId);
         this.ui.renderRoom();
@@ -126,6 +133,7 @@ export class ArtilleryGame {
         this.world.terrain = createTerrain(this.world.width, this.world.height, this.state.selectedMap);
         this.state.fighters = this.createFighters();
         this.state.fighters.forEach(fighter => this.placeOnGround(fighter));
+        this.state.turnRound = 0;
         this.state.currentTeam = TEAMS.BLUE;
         this.state.teamCursor = { blue: -1, red: -1 };
         this.state.projectile = null;
@@ -208,6 +216,7 @@ export class ArtilleryGame {
             return;
         }
         const alive = this.aliveTeam(team);
+        if (team === TEAMS.BLUE) this.state.turnRound += 1;
         this.state.currentTeam = team;
         this.state.teamCursor[team] = (this.state.teamCursor[team] + 1) % alive.length;
         this.state.activeFighter = alive[this.state.teamCursor[team]];
@@ -238,6 +247,41 @@ export class ArtilleryGame {
         if (this.state.projectile) return "炮弹飞行中";
         const name = this.state.activeFighter?.name ?? "-";
         return `${name} / ${Math.ceil(this.state.turnTime)}s / 风 ${this.world.wind}`;
+    }
+
+    getBattleInfo() {
+        if (this.state.screen !== "BATTLE") {
+            const label = {
+                GAME_MENU: "GAME MENU",
+                ROOM: "ROOM",
+                READY: "READY",
+                MAP_SELECT: "MAP SELECT",
+                SETTINGS: "SETTINGS",
+                RESULT: "RESULT"
+            }[this.state.screen] ?? this.state.screen;
+
+            return {
+                title: label,
+                subtitle: "Artillery Demo",
+                meta: "Build 008"
+            };
+        }
+
+        if (this.state.projectile) {
+            return {
+                title: "炮弹飞行中",
+                subtitle: `第 ${this.state.turnRound} 回合`,
+                meta: `风力 ${this.world.wind > 0 ? "→" : this.world.wind < 0 ? "←" : "·"} ${Math.abs(this.world.wind)}`
+            };
+        }
+
+        const active = this.state.activeFighter;
+        const teamName = active?.team === TEAMS.BLUE ? "蓝队" : "红队";
+        return {
+            title: active ? `${active.name} 回合` : "等待行动",
+            subtitle: `${teamName} / 第 ${this.state.turnRound} 回合`,
+            meta: `风力 ${this.world.wind > 0 ? "→" : this.world.wind < 0 ? "←" : "·"} ${Math.abs(this.world.wind)} / 剩余 ${Math.ceil(this.state.turnTime)} 秒`
+        };
     }
 
     canPlayerFire() {
@@ -354,6 +398,14 @@ export class ArtilleryGame {
         resetReady(this.state.slots);
         this.ui.renderRoom();
         this.setScreen("READY");
+    }
+
+    restartBattle() {
+        if (this.canStart()) {
+            this.startBattle();
+            return;
+        }
+        this.returnRoom();
     }
 
     returnRoom() {

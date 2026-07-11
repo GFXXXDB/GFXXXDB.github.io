@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Artillery Demo | Build 005</title>
+    <title>Artillery Demo | Build 008</title>
     <link rel="stylesheet" href="game.css">
 </head>
 <body>
@@ -13,23 +13,37 @@
             <div class="brand-block">
                 <p>ARTILLERY DEMO</p>
                 <h1>Artillery Demo</h1>
-                <span>Build 005</span>
+                <span>Build 008</span>
             </div>
 
             <div id="blueHud" class="team-hud blue"></div>
-            <div id="turnHud" class="turn-hud">GAME MENU</div>
+            <div id="turnHud" class="turn-hud">
+                <strong>GAME MENU</strong>
+                <span>等待进入房间</span>
+            </div>
             <div id="redHud" class="team-hud red"></div>
 
-            <button id="topBackButton" class="small-button" type="button">返回</button>
+            <div class="system-menu">
+                <button id="menuToggleButton" class="icon-button" type="button" aria-label="打开游戏菜单">☰</button>
+                <div id="systemMenuPanel" class="system-menu-panel hidden">
+                    <button id="menuSettingsButton" class="menu-action" type="button">设置</button>
+                    <button id="menuRestartButton" class="menu-action" type="button">重新开始</button>
+                    <button id="menuReturnRoomButton" class="menu-action" type="button">返回房间</button>
+                    <button id="menuExitButton" class="menu-action danger" type="button">退出游戏</button>
+                </div>
+            </div>
         </header>
 
         <section class="game-stage">
             <canvas id="gameCanvas" width="1280" height="720" aria-label="Artillery Demo fixed 1280 by 720 canvas"></canvas>
 
+            <aside id="blueRoster" class="side-roster blue"></aside>
+            <aside id="redRoster" class="side-roster red"></aside>
+
             <div id="menuScreen" class="overlay-screen">
                 <p class="screen-kicker">GAME MENU</p>
                 <h2>横版炮击原型</h2>
-                <p>固定 1280×720 逻辑分辨率，房间、准备、战斗、结算都在这个游戏窗口内完成。</p>
+                <p>固定 1280×720 逻辑分辨率，房间、准备、战斗、结算都在这个独立游戏窗口内完成。</p>
                 <div class="button-row center">
                     <button id="quickStartButton" type="button">开始游戏</button>
                     <button id="createRoomButton" type="button">创建房间</button>
@@ -41,7 +55,7 @@
             <div id="settingsScreen" class="overlay-screen hidden">
                 <p class="screen-kicker">SETTINGS</p>
                 <h2>设置</h2>
-                <p>Build 005 暂无可调设置，后续可加入音量、操作方式和规则选项。</p>
+                <p>Build 008 暂无可调设置，后续可加入音量、操作方式和规则选项。</p>
                 <div class="button-row center">
                     <button id="settingsBackButton" class="ghost" type="button">返回菜单</button>
                 </div>
@@ -62,21 +76,22 @@
                     <p id="roomHint">配置队伍并准备。</p>
                 </div>
 
-                <div class="button-row">
+                <div class="room-toolbar">
+                    <p id="selectedMapText" class="map-name">地图：-</p>
+                    <div class="button-row">
                     <button id="changeMapButton" class="ghost" type="button">选择地图</button>
                     <button id="autoFillButton" class="ghost" type="button">自动填充 AI</button>
                     <button id="startBattleButton" type="button">开始战斗</button>
+                    </div>
                 </div>
 
-                <p id="selectedMapText" class="map-name">地图：-</p>
-
                 <div class="team-board">
-                    <div>
-                        <h3>蓝队 5人</h3>
+                    <div class="room-team blue">
+                        <h3>蓝队</h3>
                         <div id="blueSlots" class="slot-list"></div>
                     </div>
-                    <div>
-                        <h3>红队 5人</h3>
+                    <div class="room-team red">
+                        <h3>红队</h3>
                         <div id="redSlots" class="slot-list"></div>
                     </div>
                 </div>
@@ -89,27 +104,35 @@
                 <div class="button-row center">
                     <button id="rematchButton" type="button">再来一局</button>
                     <button id="returnRoomButton" class="ghost" type="button">返回房间</button>
-                    <button id="returnMenuButton" class="ghost" type="button">返回游戏菜单</button>
+                    <a class="button-link ghost" href="../../../index.html">返回主页</a>
                 </div>
             </div>
         </section>
 
         <footer class="game-controls">
             <div id="battleControls" class="battle-controls hidden">
-                <label>
-                    <span>角度 <strong id="angleValue">45°</strong></span>
+                <label class="control-block angle-control">
+                    <span>角度</span>
+                    <strong id="angleValue">45°</strong>
                     <input id="angleInput" type="range" min="10" max="80" value="45">
                 </label>
-                <label>
-                    <span>力度 <strong id="powerValue">62</strong></span>
+                <label class="control-block power-control">
+                    <span>力度</span>
+                    <strong id="powerValue">62</strong>
                     <input id="powerInput" type="range" min="25" max="100" value="62">
                 </label>
-                <label>
+                <label class="control-block weapon-control">
                     <span>武器</span>
                     <select id="weaponSelect">
-                        <option>基础炮弹</option>
+                        <option>普通炮弹</option>
                     </select>
                 </label>
+                <div class="skill-bank" aria-label="技能预留">
+                    <span>技能</span>
+                    <button class="skill-button" type="button" disabled>1</button>
+                    <button class="skill-button" type="button" disabled>2</button>
+                    <button class="skill-button" type="button" disabled>3</button>
+                </div>
                 <button id="fireButton" type="button">发射</button>
             </div>
             <p id="footerHint">请选择操作。</p>
