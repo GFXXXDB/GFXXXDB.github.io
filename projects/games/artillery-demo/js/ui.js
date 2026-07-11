@@ -1,5 +1,5 @@
 import { AI_LEVELS, TEAMS } from "./room.js";
-import { MAPS } from "./terrain.js";
+import { getAllMaps } from "../systems/map-manager.js";
 
 export function createUI(game) {
     const $ = id => document.getElementById(id);
@@ -100,11 +100,11 @@ export function createUI(game) {
     }
 
     function renderMaps() {
-        dom.mapList.innerHTML = MAPS.map(map => `
+        dom.mapList.innerHTML = getAllMaps().map(map => `
             <button class="map-card ${map.id === game.state.selectedMap.id ? "selected" : ""}" data-map="${map.id}" type="button">
                 <div class="map-preview"><div class="preview-ground ${map.preview}"></div></div>
                 <h3>${map.name}</h3>
-                <p>固定逻辑地图，支持地形破坏和碰撞。</p>
+                <p>${map.description}</p>
             </button>
         `).join("");
 

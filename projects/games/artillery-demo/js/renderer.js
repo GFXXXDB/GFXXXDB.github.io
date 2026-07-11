@@ -1,4 +1,4 @@
-import { terrainY } from "./terrain.js";
+import { terrainY } from "../systems/terrain-system.js";
 
 export function createRenderer(canvas, game) {
     const ctx = canvas.getContext("2d");

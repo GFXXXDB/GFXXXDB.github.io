@@ -1,7 +1,8 @@
 import { chooseAiShot } from "./ai.js";
 import { createProjectile, distance, isProjectileOut, updateProjectile } from "./physics.js";
 import { addAi, autoFillAi, canStartRoom, createInitialSlots, getFilledSlots, removeAi, resetReady, setAiLevel, TEAMS, toggleReady } from "./room.js";
-import { createTerrain, destroyTerrain, MAPS, terrainY } from "./terrain.js";
+import { getDefaultMap, getMapById, getMapWind, getSpawnPoint } from "../systems/map-manager.js";
+import { createTerrain, destroyTerrain, terrainY } from "../systems/terrain-system.js";
 
 export class ArtilleryGame {
     constructor(ui, renderer) {
@@ -17,7 +18,7 @@ export class ArtilleryGame {
         this.controls = { angle: 45, power: 62 };
         this.state = {
             screen: "GAME_MENU",
-            selectedMap: MAPS[0],
+            selectedMap: getDefaultMap(),
             slots: createInitialSlots(),
             aiSerial: 1,
             fighters: [],
@@ -86,7 +87,7 @@ export class ArtilleryGame {
     }
 
     selectMap(mapId) {
-        this.state.selectedMap = MAPS.find(map => map.id === mapId) ?? MAPS[0];
+        this.state.selectedMap = getMapById(mapId);
         this.ui.renderMaps();
         this.ui.renderRoom();
         this.setScreen("ROOM");
@@ -150,14 +151,15 @@ export class ArtilleryGame {
         return getFilledSlots(this.state.slots).map((slot, index) => {
             const isBlue = slot.team === TEAMS.BLUE;
             const teamIndex = teamCounts[slot.team]++;
+            const spawn = getSpawnPoint(this.state.selectedMap, slot.team, teamIndex, this.world.width);
             return {
                 id: slot.id,
                 name: slot.name,
                 type: slot.type,
                 aiLevel: slot.aiLevel,
                 team: slot.team,
-                x: isBlue ? 120 + teamIndex * 68 : this.world.width - 120 - teamIndex * 68,
-                y: 0,
+                x: spawn.x,
+                y: spawn.y,
                 vy: 0,
                 hp: 100,
                 maxHp: 100,
@@ -239,7 +241,7 @@ export class ArtilleryGame {
     }
 
     randomizeWind() {
-        this.world.wind = Math.round((Math.random() * 2 - 1) * 40);
+        this.world.wind = getMapWind(this.state.selectedMap);
     }
 
     getTurnText() {
@@ -263,7 +265,7 @@ export class ArtilleryGame {
             return {
                 title: label,
                 subtitle: "Artillery Demo",
-                meta: "Build 008"
+                meta: "Build 009"
             };
         }
 

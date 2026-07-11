@@ -473,16 +473,36 @@ h1 {
         linear-gradient(170deg, transparent 42%, rgba(22, 78, 99, 0.86) 43%, #0f172a 100%);
 }
 
+.preview-ground.plain {
+    background:
+        radial-gradient(circle at 22% 74%, rgba(56, 201, 255, 0.18), transparent 15%),
+        linear-gradient(174deg, transparent 46%, rgba(22, 78, 99, 0.86) 47%, #0f172a 100%);
+}
+
 .preview-ground.valley {
     background:
         radial-gradient(circle at 50% 78%, rgba(5, 9, 20, 0.9), transparent 22%),
         linear-gradient(170deg, transparent 38%, rgba(22, 78, 99, 0.86) 39%, #0f172a 100%);
 }
 
-.preview-ground.ridge {
+.preview-ground.cover {
     background:
-        radial-gradient(circle at 76% 58%, rgba(56, 201, 255, 0.18), transparent 14%),
-        linear-gradient(155deg, transparent 48%, rgba(22, 78, 99, 0.86) 49%, #0f172a 100%);
+        linear-gradient(90deg, transparent 45%, rgba(56, 201, 255, 0.28) 46% 54%, transparent 55%),
+        linear-gradient(170deg, transparent 45%, rgba(22, 78, 99, 0.86) 46%, #0f172a 100%);
+}
+
+.preview-ground.canyon {
+    background:
+        radial-gradient(ellipse at 50% 92%, rgba(5, 9, 20, 0.94), transparent 34%),
+        linear-gradient(150deg, transparent 30%, rgba(22, 78, 99, 0.86) 31%, #0f172a 100%);
+}
+
+.preview-ground.islands {
+    background:
+        linear-gradient(170deg, transparent 48%, rgba(22, 78, 99, 0.86) 49% 64%, transparent 65%),
+        radial-gradient(ellipse at 22% 66%, rgba(22, 78, 99, 0.9) 0 18%, transparent 19%),
+        radial-gradient(ellipse at 78% 62%, rgba(22, 78, 99, 0.9) 0 18%, transparent 19%),
+        #050914;
 }
 
 .room-title,

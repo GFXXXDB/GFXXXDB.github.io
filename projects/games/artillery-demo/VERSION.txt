@@ -1,16 +1,22 @@
 Artillery Demo
 
-Build: 008
+Build: 009
 
 Features:
-- game-client style 16:9 window
-- redesigned battle HUD
-- dynamic blue/red character lists
-- room UI cleanup
-- ready toggle preserved
-- in-game system menu
-- weapon and skill UI placeholders
-- result screen UI refinement
+- map data modules
+- map manager system
+- terrain system split
+- five test maps
+- map-based spawn points
+- map-based wind configuration
+- preserved battle physics and room flow
+
+Maps:
+- Map01 碎石平原
+- Map02 山谷
+- Map03 掩体
+- Map04 峡谷
+- Map05 浮岛
 
 Date:
 2026-07-11
